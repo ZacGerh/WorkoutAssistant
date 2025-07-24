@@ -1,15 +1,17 @@
-// Workout.swift
+// Workout.swift (SwiftData Model)
 import Foundation
+import SwiftData
 
-struct Workout: Identifiable, Codable {
-    let id: UUID
+@Model
+class Workout {
+    @Attribute(.unique) var id: UUID
     var name: String
     var weight: Double
     var incrementWeight: Double
     var initialReps: Int
-    var sets: [SetButton.SetState]
+    var sets: [WorkoutSet]
 
-    init(id: UUID = UUID(), name: String, weight: Double, incrementWeight: Double, initialReps: Int, sets: [SetButton.SetState]) {
+    init(id: UUID = UUID(), name: String, weight: Double, incrementWeight: Double, initialReps: Int, sets: [WorkoutSet]) {
         self.id = id
         self.name = name
         self.weight = weight
@@ -19,35 +21,13 @@ struct Workout: Identifiable, Codable {
     }
 }
 
-extension SetButton.SetState: Codable {
-    enum CodingKeys: String, CodingKey {
-        case type, reps
-    }
+@Model
+class WorkoutSet {
+    var reps: Int
+    var state: String // notStarted, success, failure
 
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        switch self {
-        case .notStarted(let reps):
-            try container.encode("notStarted", forKey: .type)
-            try container.encode(reps, forKey: .reps)
-        case .success(let reps):
-            try container.encode("success", forKey: .type)
-            try container.encode(reps, forKey: .reps)
-        case .failure(let reps):
-            try container.encode("failure", forKey: .type)
-            try container.encode(reps, forKey: .reps)
-        }
-    }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let type = try container.decode(String.self, forKey: .type)
-        let reps = try container.decode(Int.self, forKey: .reps)
-        switch type {
-        case "notStarted": self = .notStarted(reps)
-        case "success": self = .success(reps)
-        case "failure": self = .failure(reps)
-        default: self = .notStarted(reps)
-        }
+    init(reps: Int, state: String = "notStarted") {
+        self.reps = reps
+        self.state = state
     }
 }

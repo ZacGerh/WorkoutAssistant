@@ -1,4 +1,4 @@
-// HomePageView.swift
+// HomePageView.swift (Update environment)
 import SwiftUI
 
 enum AppPage: Identifiable {
@@ -17,6 +17,7 @@ enum AppPage: Identifiable {
 
 struct HomePageView: View {
     @EnvironmentObject var workoutManager: WorkoutManager
+    @Environment(\.modelContext) private var context
     @State private var currentPage: AppPage? = nil
 
     var body: some View {
@@ -27,6 +28,7 @@ struct HomePageView: View {
                 .padding(.top)
 
             Button("Today's Workout") {
+                workoutManager.loadWorkouts(context: context)
                 currentPage = .workout
             }
             .padding()
@@ -36,6 +38,7 @@ struct HomePageView: View {
             .cornerRadius(8)
 
             Button("Workout Planner") {
+                workoutManager.loadWorkouts(context: context)
                 currentPage = .planner(fromWorkout: false)
             }
             .padding()
@@ -58,7 +61,6 @@ struct HomePageView: View {
                 })
                 .environmentObject(workoutManager)
             case .home:
-                // If currentPage is set to .home, reset to nil to show HomePageView
                 EmptyView()
             }
         }

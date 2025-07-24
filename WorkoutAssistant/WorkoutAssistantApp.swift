@@ -10,9 +10,10 @@ import SwiftData
 
 @main
 struct WorkoutAssistantApp: App {
-var sharedModelContainer: ModelContainer = {
+    var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Workout.self,
+            WorkoutSet.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -22,6 +23,7 @@ var sharedModelContainer: ModelContainer = {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+
 
     var body: some Scene {
         WindowGroup {

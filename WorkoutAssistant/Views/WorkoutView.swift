@@ -1,8 +1,10 @@
-// WorkoutView.swift
+// WorkoutView.swift (SwiftData-enabled)
 import SwiftUI
+import SwiftData
 
 struct WorkoutView: View {
     @EnvironmentObject var workoutManager: WorkoutManager
+    @Environment(\.modelContext) private var context
     @State private var timerSeconds: Int? = nil
     @State private var currentTimer: Timer? = nil
     @State private var showAlert: Bool = false
@@ -54,9 +56,12 @@ struct WorkoutView: View {
                                     .frame(maxWidth: availableWidth, alignment: .leading)
                             }
 
-                            ForEach(workoutManager.workouts.indices, id: \.self) { index in
+                            ForEach(0..<workoutManager.workouts.count, id: \.self) { index in
+                                let workout = workoutManager.workouts[index]
                                 WorkoutRowView(
-                                    workout: $workoutManager.workouts[index],
+                                    workout: Binding(get: { workout }, set: { newWorkout in
+                                        workoutManager.saveWorkout(newWorkout, context: context)
+                                    }),
                                     availableWidth: availableWidth,
                                     columnWidths: columnWidths,
                                     verticalSpacing: verticalSpacing,
@@ -108,6 +113,9 @@ struct WorkoutView: View {
                 .padding(.bottom)
             }
         }
+        .onAppear {
+            workoutManager.loadWorkouts(context: context)
+        }
         .onDisappear {
             currentTimer?.invalidate()
         }
@@ -116,41 +124,35 @@ struct WorkoutView: View {
     private var allSetsSuccessful: Bool {
         for workout in workoutManager.workouts {
             for set in workout.sets {
-                if case .success = set { continue } else { return false }
+                if set.state != "success" { return false }
             }
         }
         return true
     }
 
     private func finishWorkout() {
-        if allSetsSuccessful {
-            alertMessage = "Workout Success!"
-        } else {
-            alertMessage = "Workout Failed :("
-        }
+        alertMessage = allSetsSuccessful ? "Workout Success!" : "Workout Failed :("
         showAlert = true
     }
 
     private func handleSetTap(workoutIndex: Int, setIndex: Int, oldState: SetButton.SetState) {
-        switch oldState {
-        case .notStarted(let reps):
-            workoutManager.workouts[workoutIndex].sets[setIndex] = .success(reps)
+        var workout = workoutManager.workouts[workoutIndex]
+        let set = workout.sets[setIndex]
+
+        switch set.state {
+        case "notStarted":
+            workout.sets[setIndex].state = "success"
             startTimer(seconds: successRestTime)
-        case .success(let reps):
-            let newReps = max(reps - 1, 0)
-            workoutManager.workouts[workoutIndex].sets[setIndex] = .failure(newReps)
+        case "success":
+            workout.sets[setIndex].state = "failure"
             startTimer(seconds: failureRestTime)
-        case .failure(let reps):
-            let newReps = reps - 1
-            if newReps < 0 {
-                let initialReps = workoutManager.workouts[workoutIndex].initialReps
-                workoutManager.workouts[workoutIndex].sets[setIndex] = .notStarted(initialReps)
-                startTimer(seconds: notStartedRestTime)
-            } else {
-                workoutManager.workouts[workoutIndex].sets[setIndex] = .failure(newReps)
-                startTimer(seconds: failureRestTime)
-            }
+        case "failure":
+            workout.sets[setIndex].state = "notStarted"
+            startTimer(seconds: notStartedRestTime)
+        default:
+            workout.sets[setIndex].state = "notStarted"
         }
+        workoutManager.saveWorkout(workout, context: context)
     }
 
     private func startTimer(seconds: Int) {
