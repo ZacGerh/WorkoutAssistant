@@ -7,23 +7,25 @@
 
 import SwiftUI
 
-public enum SetState: Equatable {
-    case notStarted(Int)
-    case success(Int)
-    case failure(Int)
+// MARK: - Constants
+struct Constants {
+    static let successRestTime = 90
+    static let failureRestTime = 180
+    static let notStartedRestTime = 0
+    static let initialReps = 10
+    static let setButtonSize: CGFloat = 50
+    static let longPressDuration = 2.0
 }
 
 public struct SetButton: View {
-    @Binding public var state: SetState
-    public let onTap: (SetState) -> Void
-
-    private let size: CGFloat = 50
-    private let longPressDuration = 2.0
-
-    public init(state: Binding<SetState>, onTap: @escaping (SetState) -> Void) {
-        self._state = state
-        self.onTap = onTap
+    public enum SetState {
+        case notStarted(Int)
+        case success(Int)
+        case failure(Int)
     }
+
+    @Binding var state: SetState
+    let onTap: (SetState) -> Void
 
     public var body: some View {
         let (label, color): (String, Color) = {
@@ -35,14 +37,14 @@ public struct SetButton: View {
         }()
 
         Text(label)
-            .frame(width: size, height: size)
+            .frame(width: Constants.setButtonSize, height: Constants.setButtonSize)
             .background(color)
             .foregroundColor(.white)
             .clipShape(Circle())
             .onTapGesture {
                 onTap(state)
             }
-            .onLongPressGesture(minimumDuration: longPressDuration) {
+            .onLongPressGesture(minimumDuration: Constants.longPressDuration) {
                 state = .failure(1)
                 onTap(state)
             }

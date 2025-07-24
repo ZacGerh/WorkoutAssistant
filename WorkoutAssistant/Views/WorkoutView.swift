@@ -1,38 +1,12 @@
-//
-//  WorkoutView.swift
-//  WorkoutAssistant
-//
-//  Created by Zac Gerhardy on 7/23/25.
-//
-
 import SwiftUI
 
+// MARK: - WorkoutView with GeometryReader and ScrollView using WorkoutManager
 public struct WorkoutView: View {
+    @EnvironmentObject var workoutManager: WorkoutManager
     @State private var timerSeconds: Int? = nil
     @State private var currentTimer: Timer? = nil
-    @State private var workouts: [Workout] = [
-        Workout(name: "Chest Press", weight: 45, sets: [
-            WorkoutSet(state: .notStarted(10), reps: 10),
-            WorkoutSet(state: .notStarted(10), reps: 10),
-            WorkoutSet(state: .notStarted(10), reps: 10)
-        ]),
-        Workout(name: "This Is A Really Long Name", weight: 50, sets: [
-            WorkoutSet(state: .notStarted(8), reps: 8),
-            WorkoutSet(state: .notStarted(7), reps: 7),
-            WorkoutSet(state: .notStarted(6), reps: 6)
-        ]),
-        Workout(name: "5 by 5", weight: 55, sets: [
-            WorkoutSet(state: .notStarted(5), reps: 5),
-            WorkoutSet(state: .notStarted(5), reps: 5),
-            WorkoutSet(state: .notStarted(5), reps: 5),
-            WorkoutSet(state: .notStarted(5), reps: 5),
-            WorkoutSet(state: .notStarted(5), reps: 5)
-        ]),
-
-    ]
 
     // MARK: - Constants for WorkoutView
-
     private let successRestTime = 90
     private let failureRestTime = 180
     private let notStartedRestTime = 0
@@ -51,8 +25,8 @@ public struct WorkoutView: View {
 
             ScrollView {
                 VStack(spacing: verticalSpacing) {
-                    // Header GridRow
                     Grid(horizontalSpacing: horizontalSpacing, verticalSpacing: verticalSpacing) {
+                        // Header Row
                         GridRow {
                             Text("Workout")
                                 .bold()
@@ -66,9 +40,9 @@ public struct WorkoutView: View {
                         }
 
                         // Workout Rows
-                        ForEach(workouts.indices, id: \.self) { index in
+                        ForEach(workoutManager.workouts.indices, id: \.self) { index in
                             WorkoutRowView(
-                                workout: $workouts[index],
+                                workout: $workoutManager.workouts[index],
                                 availableWidth: availableWidth,
                                 columnWidths: columnWidths,
                                 verticalSpacing: verticalSpacing,
@@ -100,22 +74,22 @@ public struct WorkoutView: View {
         }
     }
 
-    private func handleSetTap(workoutIndex: Int, setIndex: Int, oldState: SetState) {
+    private func handleSetTap(workoutIndex: Int, setIndex: Int, oldState: SetButton.SetState) {
         switch oldState {
         case .notStarted(let reps):
-            workouts[workoutIndex].sets[setIndex].state = .success(reps)
+            workoutManager.workouts[workoutIndex].sets[setIndex] = SetButton.SetState.success(reps)
             startTimer(seconds: successRestTime)
         case .success(let reps):
             let newReps = max(reps - 1, 0)
-            workouts[workoutIndex].sets[setIndex].state = .failure(newReps)
+            workoutManager.workouts[workoutIndex].sets[setIndex] = SetButton.SetState.failure(newReps)
             startTimer(seconds: failureRestTime)
         case .failure(let reps):
             let newReps = reps - 1
             if newReps < 0 {
-                workouts[workoutIndex].sets[setIndex].state = .notStarted(workouts[workoutIndex].sets[setIndex].reps)
+                workoutManager.workouts[workoutIndex].sets[setIndex] = SetButton.SetState.notStarted(workoutManager.workouts[workoutIndex].reps)
                 startTimer(seconds: notStartedRestTime)
             } else {
-                workouts[workoutIndex].sets[setIndex].state = .failure(newReps)
+                workoutManager.workouts[workoutIndex].sets[setIndex] = SetButton.SetState.failure(newReps)
                 startTimer(seconds: failureRestTime)
             }
         }

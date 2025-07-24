@@ -8,19 +8,19 @@
 import SwiftUI
 
 public struct WorkoutRowView: View {
-    @Binding public var workout: Workout
-    let availableWidth: CGFloat
-    let columnWidths: [CGFloat]
-    let verticalSpacing: CGFloat
-    let horizontalSpacing: CGFloat
-    let onSetTap: (SetState, Int) -> Void
+    @Binding var workout: Workout
+    public let availableWidth: CGFloat
+    public let columnWidths: [CGFloat]
+    public let verticalSpacing: CGFloat
+    public let horizontalSpacing: CGFloat
+    public let onSetTap: (SetButton.SetState, Int) -> Void
 
-    public init(workout: Binding<Workout>,
+    init(workout: Binding<Workout>,
                 availableWidth: CGFloat,
                 columnWidths: [CGFloat],
                 verticalSpacing: CGFloat,
                 horizontalSpacing: CGFloat,
-                onSetTap: @escaping (SetState, Int) -> Void) {
+                onSetTap: @escaping (SetButton.SetState, Int) -> Void) {
         self._workout = workout
         self.availableWidth = availableWidth
         self.columnWidths = columnWidths
@@ -47,7 +47,7 @@ public struct WorkoutRowView: View {
 
             LazyVGrid(columns: columns, alignment: .leading, spacing: verticalSpacing) {
                 ForEach(workout.sets.indices, id: \.self) { setIndex in
-                    SetButton(state: $workout.sets[setIndex].state) { oldState in
+                    SetButton(state: $workout.sets[setIndex]) { oldState in
                         onSetTap(oldState, setIndex)
                     }
                 }

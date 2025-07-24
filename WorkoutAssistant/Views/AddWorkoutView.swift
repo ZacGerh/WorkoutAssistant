@@ -31,11 +31,7 @@ struct AddWorkoutView: View {
 
                 Section {
                     Button("Add Workout") {
-                        let newSets = (0..<numberOfSets).map { _ in
-                            WorkoutSet(state: SetState.notStarted(repsPerSet), reps: repsPerSet)
-                        }
-
-                        let newWorkout = Workout(name: workoutName, weight: weight, sets: newSets)
+                        let newWorkout = Workout(name: workoutName, weight: weight, reps:0, sets: [])
                         workouts.append(newWorkout)
                         dismiss()
                     }
@@ -46,28 +42,4 @@ struct AddWorkoutView: View {
             .navigationBarItems(leading: Button("Cancel") { dismiss() })
         }
     }
-}
-
-#Preview {
-    @State var workouts: [Workout] = [
-        Workout(name: "Chest Press", weight: 45, sets: [
-            WorkoutSet(state: .notStarted(10), reps: 10),
-            WorkoutSet(state: .notStarted(10), reps: 10),
-            WorkoutSet(state: .notStarted(10), reps: 10)
-        ]),
-        Workout(name: "This Is A Really Long Name", weight: 50, sets: [
-            WorkoutSet(state: .notStarted(8), reps: 8),
-            WorkoutSet(state: .notStarted(7), reps: 7),
-            WorkoutSet(state: .notStarted(6), reps: 6)
-        ]),
-        Workout(name: "5 by 5", weight: 55, sets: [
-            WorkoutSet(state: .notStarted(5), reps: 5),
-            WorkoutSet(state: .notStarted(5), reps: 5),
-            WorkoutSet(state: .notStarted(5), reps: 5),
-            WorkoutSet(state: .notStarted(5), reps: 5),
-            WorkoutSet(state: .notStarted(5), reps: 5)
-        ]),
-
-    ]
-    AddWorkoutView(workouts: $workouts)
 }
