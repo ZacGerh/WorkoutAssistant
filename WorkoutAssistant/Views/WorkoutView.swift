@@ -1,12 +1,16 @@
+// WorkoutView.swift
 import SwiftUI
 
-// MARK: - WorkoutView with GeometryReader and ScrollView using WorkoutManager
-public struct WorkoutView: View {
+struct WorkoutView: View {
     @EnvironmentObject var workoutManager: WorkoutManager
     @State private var timerSeconds: Int? = nil
     @State private var currentTimer: Timer? = nil
+    @State private var showAlert: Bool = false
+    @State private var alertMessage: String = ""
 
-    // MARK: - Constants for WorkoutView
+    var onFinish: () -> Void = {}
+    var openPlanner: () -> Void = {}
+
     private let successRestTime = 90
     private let failureRestTime = 180
     private let notStartedRestTime = 0
@@ -14,62 +18,117 @@ public struct WorkoutView: View {
     private let verticalSpacing: CGFloat = 15
     private let horizontalSpacing: CGFloat = 5
 
-    public init() {}
+    public init(onFinish: @escaping () -> Void = {}, openPlanner: @escaping () -> Void = {}) {
+        self.onFinish = onFinish
+        self.openPlanner = openPlanner
+    }
 
-    public var body: some View {
+    var body: some View {
         GeometryReader { geometry in
             let totalHorizontalPadding: CGFloat = 32
             let availableWidth = geometry.size.width - columnWidths[0] - columnWidths[1] - totalHorizontalPadding
 
-            ScrollView {
-                VStack(spacing: verticalSpacing) {
-                    Grid(horizontalSpacing: horizontalSpacing, verticalSpacing: verticalSpacing) {
-                        // Header Row
-                        GridRow {
-                            Text("Workout")
-                                .bold()
-                                .frame(maxWidth: columnWidths[0], alignment: .center)
-                            Text("Weight")
-                                .bold()
-                                .frame(maxWidth: columnWidths[1], alignment: .center)
-                            Text("Sets and Reps")
-                                .bold()
-                                .frame(maxWidth: availableWidth, alignment: .leading)
-                        }
-
-                        // Workout Rows
-                        ForEach(workoutManager.workouts.indices, id: \.self) { index in
-                            WorkoutRowView(
-                                workout: $workoutManager.workouts[index],
-                                availableWidth: availableWidth,
-                                columnWidths: columnWidths,
-                                verticalSpacing: verticalSpacing,
-                                horizontalSpacing: horizontalSpacing
-                            ) { oldState, setIndex in
-                                handleSetTap(workoutIndex: index, setIndex: setIndex, oldState: oldState)
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-
-                    if let seconds = timerSeconds {
-                        Text("Rest Timer: \(seconds / 60):\(String(format: "%02d", seconds % 60))")
-                            .font(.title2)
-                            .padding(.top, 20)
-                    } else {
-                        Text("Rest Timer: 0:00")
-                            .font(.title2)
-                            .padding(.top, 20)
-                    }
-
-                    Spacer()
+            VStack {
+                VStack(spacing: 5) {
+                    Text("Today's Workout!")
+                        .font(.largeTitle)
+                        .bold()
+                    Text(Date.now, style: .date)
+                        .font(.title3)
+                        .foregroundColor(.gray)
                 }
                 .padding(.top)
+
+                ScrollView {
+                    VStack(spacing: verticalSpacing) {
+                        Grid(horizontalSpacing: horizontalSpacing, verticalSpacing: verticalSpacing) {
+                            GridRow {
+                                Text("Workout")
+                                    .bold()
+                                    .frame(maxWidth: columnWidths[0], alignment: .center)
+                                Text("Weight")
+                                    .bold()
+                                    .frame(maxWidth: columnWidths[1], alignment: .center)
+                                Text("Sets and Reps")
+                                    .bold()
+                                    .frame(maxWidth: availableWidth, alignment: .leading)
+                            }
+
+                            ForEach(workoutManager.workouts.indices, id: \.self) { index in
+                                WorkoutRowView(
+                                    workout: $workoutManager.workouts[index],
+                                    availableWidth: availableWidth,
+                                    columnWidths: columnWidths,
+                                    verticalSpacing: verticalSpacing,
+                                    horizontalSpacing: horizontalSpacing
+                                ) { oldState, setIndex in
+                                    handleSetTap(workoutIndex: index, setIndex: setIndex, oldState: oldState)
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+
+                        if let seconds = timerSeconds {
+                            Text("Rest Timer: \\(seconds / 60):\\(String(format: \"%02d\", seconds % 60))")
+                                .font(.title2)
+                                .padding(.top, 20)
+                        } else {
+                            Text("Rest Timer: 0:00")
+                                .font(.title2)
+                                .padding(.top, 20)
+                        }
+                    }
+                }
+
+                Button(action: {
+                    finishWorkout()
+                    onFinish()
+                }) {
+                    Text("Finish Workout")
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(allSetsSuccessful ? Color.green : Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+                .padding(.horizontal)
+                .padding(.vertical)
+                .alert(isPresented: $showAlert) {
+                    Alert(title: Text(alertMessage))
+                }
+
+                Button("Workout Planner") {
+                    openPlanner()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(8)
+                .padding(.bottom)
             }
         }
         .onDisappear {
             currentTimer?.invalidate()
         }
+    }
+
+    private var allSetsSuccessful: Bool {
+        for workout in workoutManager.workouts {
+            for set in workout.sets {
+                if case .success = set { continue } else { return false }
+            }
+        }
+        return true
+    }
+
+    private func finishWorkout() {
+        if allSetsSuccessful {
+            alertMessage = "Workout Success!"
+        } else {
+            alertMessage = "Workout Failed :("
+        }
+        showAlert = true
     }
 
     private func handleSetTap(workoutIndex: Int, setIndex: Int, oldState: SetButton.SetState) {
@@ -84,7 +143,6 @@ public struct WorkoutView: View {
         case .failure(let reps):
             let newReps = reps - 1
             if newReps < 0 {
-                // Reset to initial reps value of workout
                 let initialReps = workoutManager.workouts[workoutIndex].initialReps
                 workoutManager.workouts[workoutIndex].sets[setIndex] = .notStarted(initialReps)
                 startTimer(seconds: notStartedRestTime)
