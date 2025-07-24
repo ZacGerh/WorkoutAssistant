@@ -12,7 +12,8 @@ struct AddWorkoutView: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var workoutName: String = ""
-    @State private var weight: Int = 0
+    @State private var weight: Double = 0.0
+    @State private var incrementWeight: Double = 0.0
     @State private var numberOfSets: Int = 5
     @State private var repsPerSet: Int = 10
 
@@ -31,7 +32,7 @@ struct AddWorkoutView: View {
 
                 Section {
                     Button("Add Workout") {
-                        let newWorkout = Workout(name: workoutName, weight: weight, reps:0, sets: [])
+                        let newWorkout = Workout(name: workoutName, weight: weight, incrementWeight: incrementWeight, initialReps:repsPerSet, sets: [])
                         workouts.append(newWorkout)
                         dismiss()
                     }

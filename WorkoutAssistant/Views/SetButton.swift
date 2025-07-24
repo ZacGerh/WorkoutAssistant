@@ -12,7 +12,6 @@ struct Constants {
     static let successRestTime = 90
     static let failureRestTime = 180
     static let notStartedRestTime = 0
-    static let initialReps = 10
     static let setButtonSize: CGFloat = 50
     static let longPressDuration = 2.0
 }

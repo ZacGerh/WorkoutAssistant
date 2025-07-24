@@ -1,25 +1,53 @@
-//
-//  Workout.swift
-//  WorkoutAssistant
-//
-//  Created by Zac Gerhardy on 7/23/25.
-//
-
+// Workout.swift
 import Foundation
 
-// MARK: - Data Models
-struct Workout: Identifiable {
-    let id = UUID()
+struct Workout: Identifiable, Codable {
+    let id: UUID
     var name: String
-    var weight: Int
-    var reps: Int
+    var weight: Double
+    var incrementWeight: Double
+    var initialReps: Int
     var sets: [SetButton.SetState]
+
+    init(id: UUID = UUID(), name: String, weight: Double, incrementWeight: Double, initialReps: Int, sets: [SetButton.SetState]) {
+        self.id = id
+        self.name = name
+        self.weight = weight
+        self.incrementWeight = incrementWeight
+        self.initialReps = initialReps
+        self.sets = sets
+    }
 }
 
-class WorkoutManager: ObservableObject {
-    @Published var workouts: [Workout] = [
-        .init(name: "Bench Press", weight: 45, reps: 10, sets: [.notStarted(10), .notStarted(10), .notStarted(10)]),
-        .init(name: "Lateral Raise", weight: 25, reps: 8, sets: [.notStarted(8), .notStarted(8)]),
-        .init(name: "5x5", weight: 55, reps: 5, sets: [.notStarted(5), .notStarted(5), .notStarted(5), .notStarted(5), .notStarted(5)]),
-    ]
+extension SetButton.SetState: Codable {
+    enum CodingKeys: String, CodingKey {
+        case type, reps
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .notStarted(let reps):
+            try container.encode("notStarted", forKey: .type)
+            try container.encode(reps, forKey: .reps)
+        case .success(let reps):
+            try container.encode("success", forKey: .type)
+            try container.encode(reps, forKey: .reps)
+        case .failure(let reps):
+            try container.encode("failure", forKey: .type)
+            try container.encode(reps, forKey: .reps)
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+        let reps = try container.decode(Int.self, forKey: .reps)
+        switch type {
+        case "notStarted": self = .notStarted(reps)
+        case "success": self = .success(reps)
+        case "failure": self = .failure(reps)
+        default: self = .notStarted(reps)
+        }
+    }
 }

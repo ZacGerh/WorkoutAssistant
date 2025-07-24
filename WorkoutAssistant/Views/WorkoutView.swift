@@ -10,8 +10,6 @@ public struct WorkoutView: View {
     private let successRestTime = 90
     private let failureRestTime = 180
     private let notStartedRestTime = 0
-    private let setButtonSize: CGFloat = 50
-    private let longPressDuration = 2.0
     private let columnWidths: [CGFloat] = [75, 75]
     private let verticalSpacing: CGFloat = 15
     private let horizontalSpacing: CGFloat = 5
@@ -77,19 +75,21 @@ public struct WorkoutView: View {
     private func handleSetTap(workoutIndex: Int, setIndex: Int, oldState: SetButton.SetState) {
         switch oldState {
         case .notStarted(let reps):
-            workoutManager.workouts[workoutIndex].sets[setIndex] = SetButton.SetState.success(reps)
+            workoutManager.workouts[workoutIndex].sets[setIndex] = .success(reps)
             startTimer(seconds: successRestTime)
         case .success(let reps):
             let newReps = max(reps - 1, 0)
-            workoutManager.workouts[workoutIndex].sets[setIndex] = SetButton.SetState.failure(newReps)
+            workoutManager.workouts[workoutIndex].sets[setIndex] = .failure(newReps)
             startTimer(seconds: failureRestTime)
         case .failure(let reps):
             let newReps = reps - 1
             if newReps < 0 {
-                workoutManager.workouts[workoutIndex].sets[setIndex] = SetButton.SetState.notStarted(workoutManager.workouts[workoutIndex].reps)
+                // Reset to initial reps value of workout
+                let initialReps = workoutManager.workouts[workoutIndex].initialReps
+                workoutManager.workouts[workoutIndex].sets[setIndex] = .notStarted(initialReps)
                 startTimer(seconds: notStartedRestTime)
             } else {
-                workoutManager.workouts[workoutIndex].sets[setIndex] = SetButton.SetState.failure(newReps)
+                workoutManager.workouts[workoutIndex].sets[setIndex] = .failure(newReps)
                 startTimer(seconds: failureRestTime)
             }
         }
