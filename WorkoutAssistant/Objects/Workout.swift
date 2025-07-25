@@ -1,4 +1,4 @@
-// Workout.swift (SwiftData Model)
+// Workout.swift (SwiftData Model with timestamp)
 import Foundation
 import SwiftData
 
@@ -10,14 +10,16 @@ class Workout {
     var incrementWeight: Double
     var initialReps: Int
     var sets: [WorkoutSet]
+    var createdAt: Date // New property for insertion order
 
-    init(id: UUID = UUID(), name: String, weight: Double, incrementWeight: Double, initialReps: Int, sets: [WorkoutSet]) {
+    init(id: UUID = UUID(), name: String, weight: Double, incrementWeight: Double, initialReps: Int, sets: [WorkoutSet], createdAt: Date = Date()) {
         self.id = id
         self.name = name
         self.weight = weight
         self.incrementWeight = incrementWeight
         self.initialReps = initialReps
         self.sets = sets
+        self.createdAt = createdAt
     }
 }
 
