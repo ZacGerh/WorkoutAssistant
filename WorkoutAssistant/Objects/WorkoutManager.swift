@@ -1,10 +1,11 @@
-// ===== START FILE: WorkoutManager.swift (Added replaceAll) =====
+// Handles loading, saving, and replacing workout data using SwiftData.
 import SwiftUI
 import SwiftData
 
 class WorkoutManager: ObservableObject {
     @Published var workouts: [Workout] = []
 
+    /// Load workouts from SwiftData and sort by insertion date.
     func loadWorkouts(context: ModelContext) {
         let descriptor = FetchDescriptor<Workout>()
         if let fetched = try? context.fetch(descriptor) {
@@ -12,14 +13,15 @@ class WorkoutManager: ObservableObject {
         }
     }
 
+    /// Save a single workout.
     func saveWorkout(_ workout: Workout, context: ModelContext) {
         context.insert(workout)
         try? context.save()
         loadWorkouts(context: context)
     }
 
+    /// Replace all workouts with a new list.
     func replaceAll(_ newWorkouts: [Workout], context: ModelContext) {
-        // Remove old workouts
         for workout in workouts {
             context.delete(workout)
         }
@@ -30,4 +32,3 @@ class WorkoutManager: ObservableObject {
         self.workouts = newWorkouts
     }
 }
-// ===== END FILE: WorkoutManager.swift (Added replaceAll) =====

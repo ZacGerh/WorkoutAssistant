@@ -103,7 +103,7 @@ struct WorkoutPlannerView: View {
             }
 
             HStack(spacing: 15) {
-                Button("Add Workout") { withAnimation { addWorkout() } }
+                Button("Add") { withAnimation { addWorkout() } }
                 .buttonStyle(PlannerButtonStyle(color: .blue))
 
                 Button("Save") {

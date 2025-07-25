@@ -1,13 +1,6 @@
-//
-//  SetButton.swift
-//  WorkoutAssistant
-//
-//  Created by Zac Gerhardy on 7/23/25.
-//
-
+// UI component for individual set buttons.
 import SwiftUI
 
-// MARK: - Constants
 struct Constants {
     static let successRestTime = 90
     static let failureRestTime = 180
@@ -40,9 +33,7 @@ public struct SetButton: View {
             .background(color)
             .foregroundColor(.white)
             .clipShape(Circle())
-            .onTapGesture {
-                onTap(state)
-            }
+            .onTapGesture { onTap(state) }
             .onLongPressGesture(minimumDuration: Constants.longPressDuration) {
                 state = .failure(1)
                 onTap(state)

@@ -1,4 +1,4 @@
-// ===== START FILE: HomePageView.swift =====
+// The landing page for the app, with navigation to Workout and Planner pages.
 import SwiftUI
 
 struct HomePageView: View {
@@ -54,14 +54,9 @@ struct WorkoutPlannerWrapper: View {
 
     var body: some View {
         WorkoutPlannerView(
-            onSave: { workouts in
-                onSave(workouts)
-            },
-            onCancel: {
-                onDismiss()
-            },
+            onSave: { workouts in onSave(workouts) },
+            onCancel: { onDismiss() },
             existingWorkouts: existingWorkouts
         )
     }
 }
-// ===== END FILE: HomePageView.swift =====

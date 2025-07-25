@@ -1,23 +1,26 @@
-// Updated WorkoutView with dynamic row layout for set buttons using LazyVGrid
+// WorkoutView with dynamic layout and inline comments for clarity
 import SwiftUI
 import SwiftData
 
+// Represents the local state for each set button in the current session.
 struct LocalSetState: Identifiable, Hashable {
     let id = UUID()
     var reps: Int
-    var state: String // notStarted, success, failure
+    var state: String // Possible values: notStarted, success, failure
 }
 
 struct WorkoutView: View {
     @EnvironmentObject var workoutManager: WorkoutManager
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+
     @State private var timerSeconds: Int? = nil
     @State private var currentTimer: Timer? = nil
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     @State private var localSets: [[LocalSetState]] = []
 
+    // Constants for layout and timer behavior.
     private let successRestTime = 90
     private let failureRestTime = 180
     private let notStartedRestTime = 0
@@ -35,48 +38,7 @@ struct WorkoutView: View {
             VStack {
                 headerSection
                 ScrollView {
-                    Grid(horizontalSpacing: horizontalSpacing, verticalSpacing: verticalSpacing) {
-                        GridRow {
-                            Text("Workout")
-                                .bold()
-                                .frame(width: columnWidths[0], alignment: .center)
-                            Text("Weight")
-                                .bold()
-                                .frame(width: columnWidths[1], alignment: .center)
-                            Text("Sets and Reps")
-                                .bold()
-                                .frame(maxWidth: availableWidth, alignment: .leading)
-                        }
-
-                        ForEach(localSets.indices, id: \.self) { workoutIndex in
-                            let workout = workoutManager.workouts[workoutIndex]
-                            GridRow {
-                                Text(workout.name)
-                                    .frame(width: columnWidths[0], alignment: .center)
-                                Text("\(Int(workout.weight))")
-                                    .frame(width: columnWidths[1], alignment: .center)
-
-                                LazyVGrid(columns: Array(repeating: GridItem(.fixed(setButtonSize), spacing: horizontalSpacing), count: columnsCount), alignment: .leading, spacing: verticalSpacing) {
-                                    ForEach(localSets[workoutIndex].indices, id: \.self) { setIndex in
-                                        let setBinding = Binding<LocalSetState>(
-                                            get: { localSets[workoutIndex][setIndex] },
-                                            set: { localSets[workoutIndex][setIndex] = $0 }
-                                        )
-                                        SetButton(
-                                            state: Binding(
-                                                get: { convertToSetState(setBinding.wrappedValue) },
-                                                set: { newState in setBinding.wrappedValue = convertFromSetState(newState) }
-                                            )
-                                        ) { _ in
-                                            handleSetTap(workoutIndex: workoutIndex, setIndex: setIndex)
-                                        }
-                                    }
-                                }
-                                .frame(maxWidth: availableWidth, alignment: .leading)
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
+                    buildWorkoutGrid(availableWidth: availableWidth, columnsCount: columnsCount)
                     restTimerView
                 }
                 finishButton
@@ -85,6 +47,8 @@ struct WorkoutView: View {
         .onAppear(perform: loadWorkouts)
         .onDisappear { currentTimer?.invalidate() }
     }
+
+    // MARK: - UI Sections
 
     private var headerSection: some View {
         VStack(spacing: 5) {
@@ -96,6 +60,43 @@ struct WorkoutView: View {
                 .foregroundColor(.gray)
         }
         .padding(.top)
+    }
+
+    private func buildWorkoutGrid(availableWidth: CGFloat, columnsCount: Int) -> some View {
+        Grid(horizontalSpacing: horizontalSpacing, verticalSpacing: verticalSpacing) {
+            GridRow {
+                Text("Workout").bold().frame(width: columnWidths[0], alignment: .center)
+                Text("Weight").bold().frame(width: columnWidths[1], alignment: .center)
+                Text("Sets and Reps").bold().frame(maxWidth: availableWidth, alignment: .leading)
+            }
+
+            ForEach(localSets.indices, id: \.self) { workoutIndex in
+                let workout = workoutManager.workouts[workoutIndex]
+                GridRow {
+                    Text(workout.name).frame(width: columnWidths[0], alignment: .center)
+                    Text("\(Int(workout.weight))").frame(width: columnWidths[1], alignment: .center)
+
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(setButtonSize), spacing: horizontalSpacing), count: columnsCount), alignment: .leading, spacing: verticalSpacing) {
+                        ForEach(localSets[workoutIndex].indices, id: \.self) { setIndex in
+                            let setBinding = Binding<LocalSetState>(
+                                get: { localSets[workoutIndex][setIndex] },
+                                set: { localSets[workoutIndex][setIndex] = $0 }
+                            )
+                            SetButton(
+                                state: Binding(
+                                    get: { convertToSetState(setBinding.wrappedValue) },
+                                    set: { newState in setBinding.wrappedValue = convertFromSetState(newState) }
+                                )
+                            ) { _ in
+                                handleSetTap(workoutIndex: workoutIndex, setIndex: setIndex)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: availableWidth, alignment: .leading)
+                }
+            }
+        }
+        .padding(.horizontal)
     }
 
     private var restTimerView: some View {
@@ -131,8 +132,11 @@ struct WorkoutView: View {
         }
     }
 
+    // MARK: - Data & Logic
+
     private func loadWorkouts() {
         workoutManager.loadWorkouts(context: context)
+        // Initialize local sets for each workout with default states.
         localSets = workoutManager.workouts.map { workout in
             (0..<workout.sets.count).map { _ in LocalSetState(reps: workout.initialReps, state: "notStarted") }
         }
@@ -147,6 +151,7 @@ struct WorkoutView: View {
         showAlert = true
     }
 
+    // Handle tap interactions for a specific set button.
     private func handleSetTap(workoutIndex: Int, setIndex: Int) {
         guard workoutIndex < localSets.count, setIndex < localSets[workoutIndex].count else { return }
         var set = localSets[workoutIndex][setIndex]
@@ -197,6 +202,7 @@ struct WorkoutView: View {
         }
     }
 
+    // Start or restart the rest timer.
     private func startTimer(seconds: Int) {
         currentTimer?.invalidate()
         timerSeconds = seconds
