@@ -1,7 +1,9 @@
 // Model for workouts and sets, designed for SwiftData persistence.
+
 import Foundation
 import SwiftData
 
+// MARK: - Workout Model
 @Model
 class Workout {
     @Attribute(.unique) var id: UUID
@@ -23,6 +25,7 @@ class Workout {
     }
 }
 
+// MARK: - WorkoutSet Model
 @Model
 class WorkoutSet {
     var reps: Int

@@ -1,4 +1,5 @@
-// The landing page for the app, with navigation to Workout and Planner pages.
+// Landing page for navigation to Today's Workout and Workout Planner.
+
 import SwiftUI
 
 struct HomePageView: View {
@@ -13,6 +14,7 @@ struct HomePageView: View {
                     .bold()
                     .padding(.top)
 
+                // Navigate to Today's Workout
                 NavigationLink("Today's Workout") {
                     WorkoutView()
                         .environmentObject(workoutManager)
@@ -23,6 +25,7 @@ struct HomePageView: View {
                 .foregroundColor(.white)
                 .cornerRadius(8)
 
+                // Navigate to Workout Planner
                 NavigationLink("Workout Planner") {
                     WorkoutPlannerWrapper(
                         onDismiss: {},

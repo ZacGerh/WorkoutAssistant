@@ -1,7 +1,9 @@
-// ===== START FILE: WorkoutPlannerView.swift (Ensure updated set count saved) =====
+// Workout Planner with temporary editing state, alternating colors, and delete functionality.
+
 import SwiftUI
 import SwiftData
 
+// MARK: - Planner Button Style
 struct PlannerButtonStyle: ButtonStyle {
     let color: Color
     func makeBody(configuration: Configuration) -> some View {
@@ -14,6 +16,7 @@ struct PlannerButtonStyle: ButtonStyle {
     }
 }
 
+// MARK: - TempWorkout (Ephemeral Data)
 struct TempWorkout: Identifiable {
     let id: UUID
     var name: String
@@ -41,12 +44,12 @@ struct TempWorkout: Identifiable {
     }
 
     func toWorkout() -> Workout {
-        // Ensure the correct number of sets is generated
         let sets = (0..<setCount).map { _ in WorkoutSet(reps: reps) }
         return Workout(id: id, name: name, weight: weight, incrementWeight: incrementWeight, initialReps: reps, sets: sets)
     }
 }
 
+// MARK: - Workout Planner View
 struct WorkoutPlannerView: View {
     @EnvironmentObject var workoutManager: WorkoutManager
     @Environment(\.modelContext) private var context
@@ -66,50 +69,16 @@ struct WorkoutPlannerView: View {
 
             List {
                 ForEach(tempWorkouts.indices, id: \.self) { index in
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            TextField("Workout Name", text: $tempWorkouts[index].name)
-                                .focused($focusedWorkoutID, equals: tempWorkouts[index].id)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                            Spacer()
-                            Button(action: {
-                                withAnimation { deleteWorkout(at: index) }
-                            }) {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
-                            }
-                        }
-
-                        TextField("Starting Weight", value: $tempWorkouts[index].weight, format: .number)
-                            .keyboardType(.decimalPad)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-
-                        TextField("Increment Weight", value: $tempWorkouts[index].incrementWeight, format: .number)
-                            .keyboardType(.decimalPad)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-
-                        Stepper(value: $tempWorkouts[index].setCount, in: 1...10) {
-                            Text("Number of Sets: \(tempWorkouts[index].setCount)")
-                        }
-
-                        Stepper(value: $tempWorkouts[index].reps, in: 1...20) {
-                            Text("Reps per Set: \(tempWorkouts[index].reps)")
-                        }
-                    }
-                    .padding(.vertical, 5)
-                    .listRowBackground(index % 2 == 0 ? Color(UIColor.systemGray6) : Color(UIColor.systemGray5))
-                    .cornerRadius(8)
+                    plannerCard(for: index)
                 }
             }
 
             HStack(spacing: 15) {
                 Button("Add") { withAnimation { addWorkout() } }
-                .buttonStyle(PlannerButtonStyle(color: .blue))
+                    .buttonStyle(PlannerButtonStyle(color: .blue))
 
                 Button("Save") {
-                    // Generate final workouts with the updated set counts
-                    let finalWorkouts = tempWorkouts.map { $0.toWorkout() }
-                    onSave?(finalWorkouts)
+                    onSave?(tempWorkouts.map { $0.toWorkout() })
                     dismiss()
                 }
                 .buttonStyle(PlannerButtonStyle(color: .green))
@@ -125,6 +94,42 @@ struct WorkoutPlannerView: View {
         .onAppear { tempWorkouts = existingWorkouts.map { TempWorkout(from: $0) } }
     }
 
+    // MARK: - Helper UI
+    private func plannerCard(for index: Int) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                TextField("Workout Name", text: $tempWorkouts[index].name)
+                    .focused($focusedWorkoutID, equals: tempWorkouts[index].id)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                Spacer()
+                Button(action: { withAnimation { deleteWorkout(at: index) } }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+            }
+
+            TextField("Starting Weight", value: $tempWorkouts[index].weight, format: .number)
+                .keyboardType(.decimalPad)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+
+            TextField("Increment Weight", value: $tempWorkouts[index].incrementWeight, format: .number)
+                .keyboardType(.decimalPad)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+
+            Stepper(value: $tempWorkouts[index].setCount, in: 1...10) {
+                Text("Number of Sets: \(tempWorkouts[index].setCount)")
+            }
+
+            Stepper(value: $tempWorkouts[index].reps, in: 1...20) {
+                Text("Reps per Set: \(tempWorkouts[index].reps)")
+            }
+        }
+        .padding(.vertical, 5)
+        .listRowBackground(index % 2 == 0 ? Color(UIColor.systemGray6) : Color(UIColor.systemGray5))
+        .cornerRadius(8)
+    }
+
+    // MARK: - Logic
     private func addWorkout() {
         let newWorkout = TempWorkout(name: "New Workout")
         tempWorkouts.append(newWorkout)
@@ -135,4 +140,3 @@ struct WorkoutPlannerView: View {
         tempWorkouts.remove(at: index)
     }
 }
-// ===== END FILE: WorkoutPlannerView.swift =====
