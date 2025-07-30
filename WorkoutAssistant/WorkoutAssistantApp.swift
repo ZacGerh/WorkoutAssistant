@@ -5,6 +5,7 @@ import SwiftData
 @main
 struct WorkoutAssistantApp: App {
     @State private var showCorruptionAlert = false
+    @StateObject private var settingsManager = SettingsManager() // Added SettingsManager
 
     var sharedModelContainer: ModelContainer = {
         do {
@@ -46,11 +47,11 @@ struct WorkoutAssistantApp: App {
         }
     }()
 
-
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .modelContainer(sharedModelContainer)
+                .environmentObject(settingsManager) // Inject settings into environment
                 .onReceive(NotificationCenter.default.publisher(for: .corruptionDetected)) { _ in
                     showCorruptionAlert = true
                 }

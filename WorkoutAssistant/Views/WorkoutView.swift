@@ -23,6 +23,16 @@ struct WorkoutView: View {
     @State private var workoutTimer: Timer? = nil
     @State private var workoutStartTime: Date = Date()
 
+    // Progressive loading and decrement rules
+    @AppStorage("progressiveSuccessCount") private var progressiveSuccessCount: Int = 3
+    @AppStorage("failureDecrementCount") private var failureDecrementCount: Int = 2
+    @AppStorage("usePercentageForDecrement") private var usePercentageForDecrement: Bool = true
+    @AppStorage("decrementValue") private var decrementValue: Double = 50
+    @AppStorage("useKg") private var useKg: Bool = false
+
+    @State private var successStreaks: [UUID: Int] = [:]
+    @State private var failureStreaks: [UUID: Int] = [:]
+
     // Constants for layout and timer behavior.
     private let successRestTime = 90
     private let failureRestTime = 180
@@ -84,7 +94,7 @@ struct WorkoutView: View {
                 let workout = workoutManager.workouts[workoutIndex]
                 GridRow {
                     Text(workout.name).frame(width: columnWidths[0], alignment: .center)
-                    Text("\(Int(workout.weight))").frame(width: columnWidths[1], alignment: .center)
+                    Text("\(Int(workout.weight)) \(useKg ? "kg" : "lbs")").frame(width: columnWidths[1], alignment: .center)
 
                     LazyVGrid(columns: Array(repeating: GridItem(.fixed(setButtonSize), spacing: horizontalSpacing), count: columnsCount), alignment: .leading, spacing: verticalSpacing) {
                         ForEach(localSets[workoutIndex].indices, id: \.self) { setIndex in
@@ -175,13 +185,9 @@ struct WorkoutView: View {
         showAlert = true
         workoutTimer?.invalidate()
         saveWorkoutResult()
-        
-
     }
 
     private func saveWorkoutResult() {
-        print("Saving WorkoutResult with \(workoutManager.workouts.count) workouts.")
-        print("Overall success: \(allSetsSuccessful)")
         let resultItems: [WorkoutResultItem] = zip(workoutManager.workouts, localSets).map { workout, sets in
             let failedReps = sets.filter { $0.state != "success" }.map { $0.reps }
             let success = failedReps.isEmpty
@@ -195,7 +201,6 @@ struct WorkoutView: View {
         }
 
         let overallSuccess = resultItems.allSatisfy { $0.success }
-
         let result = WorkoutResult(
             timestamp: Date(),
             totalTime: Double(workoutTime),
@@ -207,10 +212,10 @@ struct WorkoutView: View {
         try? context.save()
     }
 
-    // Handle set button tap logic.
     private func handleSetTap(workoutIndex: Int, setIndex: Int) {
         guard workoutIndex < localSets.count, setIndex < localSets[workoutIndex].count else { return }
         var set = localSets[workoutIndex][setIndex]
+
         switch set.state {
         case "notStarted":
             set.state = "success"
@@ -220,20 +225,44 @@ struct WorkoutView: View {
                 set.reps -= 1
                 set.state = "failure"
                 startTimer(seconds: failureRestTime)
-            } else {
-                resetSet(&set, workoutIndex: workoutIndex)
             }
         case "failure":
             if set.reps > 0 {
                 set.reps -= 1
                 startTimer(seconds: failureRestTime)
-            } else {
-                resetSet(&set, workoutIndex: workoutIndex)
             }
         default:
             resetSet(&set, workoutIndex: workoutIndex)
         }
         localSets[workoutIndex][setIndex] = set
+        evaluateWorkoutProgress(for: workoutIndex)
+    }
+
+    private func evaluateWorkoutProgress(for workoutIndex: Int) {
+        guard workoutIndex < localSets.count else { return }
+        let workout = workoutManager.workouts[workoutIndex]
+        let sets = localSets[workoutIndex]
+        let isWorkoutSuccess = sets.allSatisfy { $0.state == "success" }
+        let workoutId = workout.id
+
+        if isWorkoutSuccess {
+            successStreaks[workoutId, default: 0] += 1
+            failureStreaks[workoutId] = 0
+            if successStreaks[workoutId]! >= progressiveSuccessCount {
+                workout.weight += workout.incrementWeight
+                successStreaks[workoutId] = 0
+            }
+        } else if sets.contains(where: { $0.state == "failure" }) {
+            failureStreaks[workoutId, default: 0] += 1
+            successStreaks[workoutId] = 0
+            if failureStreaks[workoutId]! >= failureDecrementCount {
+                let decrement = usePercentageForDecrement ?
+                    (workout.weight * (decrementValue / 100.0)) :
+                    decrementValue
+                workout.weight = max(0, workout.weight - decrement)
+                failureStreaks[workoutId] = 0
+            }
+        }
     }
 
     private func resetSet(_ set: inout LocalSetState, workoutIndex: Int) {

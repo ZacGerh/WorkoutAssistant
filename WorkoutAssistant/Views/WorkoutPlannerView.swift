@@ -1,3 +1,4 @@
+// ===== START FILE: WorkoutPlannerView.swift =====
 // Workout Planner with temporary editing state, alternating colors, and delete functionality.
 
 import SwiftUI
@@ -25,7 +26,12 @@ struct TempWorkout: Identifiable {
     var reps: Int
     var setCount: Int
 
-    init(id: UUID = UUID(), name: String = "", weight: Double = 0.0, incrementWeight: Double = 5.0, reps: Int = 10, setCount: Int = 1) {
+    init(id: UUID = UUID(),
+         name: String = "",
+         weight: Double = 0.0,
+         incrementWeight: Double = 5.0,
+         reps: Int = 10,
+         setCount: Int = 1) {
         self.id = id
         self.name = name
         self.weight = weight
@@ -45,13 +51,21 @@ struct TempWorkout: Identifiable {
 
     func toWorkout() -> Workout {
         let sets = (0..<setCount).map { _ in WorkoutSet(reps: reps) }
-        return Workout(id: id, name: name, weight: weight, incrementWeight: incrementWeight, initialReps: reps, sets: sets)
+        return Workout(
+            id: id,
+            name: name,
+            weight: weight,
+            incrementWeight: incrementWeight,
+            initialReps: reps,
+            sets: sets
+        )
     }
 }
 
 // MARK: - Workout Planner View
 struct WorkoutPlannerView: View {
     @EnvironmentObject var workoutManager: WorkoutManager
+    @EnvironmentObject var settings: SettingsManager
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @State private var tempWorkouts: [TempWorkout] = []
@@ -91,27 +105,31 @@ struct WorkoutPlannerView: View {
             }
         }
         .padding()
-        .onAppear { tempWorkouts = existingWorkouts.map { TempWorkout(from: $0) } }
+        .onAppear {
+            tempWorkouts = existingWorkouts.map { TempWorkout(from: $0) }
+        }
     }
 
     // MARK: - Helper UI
     private func plannerCard(for index: Int) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                TextField("Workout Name", text: $tempWorkouts[index].name)
-                    .focused($focusedWorkoutID, equals: tempWorkouts[index].id)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                Spacer()
-                Button(action: { withAnimation { deleteWorkout(at: index) } }) {
-                    Image(systemName: "trash")
-                        .foregroundColor(.red)
-                }
-            }
+            Text("Workout Name")
+                .font(.caption)
+                .foregroundColor(.gray)
+            TextField("Workout Name", text: $tempWorkouts[index].name)
+                .focused($focusedWorkoutID, equals: tempWorkouts[index].id)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
 
+            Text("Starting Weight (\(settings.weightUnit.rawValue))")
+                .font(.caption)
+                .foregroundColor(.gray)
             TextField("Starting Weight", value: $tempWorkouts[index].weight, format: .number)
                 .keyboardType(.decimalPad)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
 
+            Text("Increment Weight (\(settings.weightUnit.rawValue))")
+                .font(.caption)
+                .foregroundColor(.gray)
             TextField("Increment Weight", value: $tempWorkouts[index].incrementWeight, format: .number)
                 .keyboardType(.decimalPad)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -123,6 +141,12 @@ struct WorkoutPlannerView: View {
             Stepper(value: $tempWorkouts[index].reps, in: 1...20) {
                 Text("Reps per Set: \(tempWorkouts[index].reps)")
             }
+
+            Button(action: { withAnimation { deleteWorkout(at: index) } }) {
+                Label("Delete Workout", systemImage: "trash")
+                    .foregroundColor(.red)
+            }
+            .padding(.top, 5)
         }
         .padding(.vertical, 5)
         .listRowBackground(index % 2 == 0 ? Color(UIColor.systemGray6) : Color(UIColor.systemGray5))
@@ -131,7 +155,11 @@ struct WorkoutPlannerView: View {
 
     // MARK: - Logic
     private func addWorkout() {
-        let newWorkout = TempWorkout(name: "New Workout")
+        let newWorkout = TempWorkout(
+            name: "New Workout",
+            weight: settings.defaultStartingWeight,
+            incrementWeight: settings.defaultIncrement
+        )
         tempWorkouts.append(newWorkout)
         focusedWorkoutID = newWorkout.id
     }
@@ -140,3 +168,5 @@ struct WorkoutPlannerView: View {
         tempWorkouts.remove(at: index)
     }
 }
+
+// ===== END FILE: WorkoutPlannerView.swift =====
