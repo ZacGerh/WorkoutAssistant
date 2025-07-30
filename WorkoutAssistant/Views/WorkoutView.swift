@@ -20,11 +20,11 @@ struct WorkoutView: View {
     @State private var alertMessage: String = ""
     @State private var localSets: [[LocalSetState]] = []
 
-    @State private var workoutTime: Int = 0
+    @State private var workoutTime: Int = 0 // Total workout time (in seconds)
     @State private var workoutTimer: Timer? = nil
     @State private var workoutStartTime: Date = Date()
 
-    // Constants
+    // Constants for layout and timer behavior.
     private let successRestTime = 90
     private let failureRestTime = 180
     private let notStartedRestTime = 0
@@ -76,17 +76,17 @@ struct WorkoutView: View {
     private func buildWorkoutGrid(availableWidth: CGFloat, columnsCount: Int) -> some View {
         Grid(horizontalSpacing: horizontalSpacing, verticalSpacing: verticalSpacing) {
             GridRow {
-                Text("Workout").bold().frame(width: columnWidths[0])
-                Text("Weight").bold().frame(width: columnWidths[1])
+                Text("Workout").bold().frame(width: columnWidths[0], alignment: .center)
+                Text("Weight").bold().frame(width: columnWidths[1], alignment: .center)
                 Text("Sets and Reps").bold().frame(maxWidth: availableWidth, alignment: .leading)
             }
 
             ForEach(localSets.indices, id: \.self) { workoutIndex in
                 let workout = workoutManager.workouts[workoutIndex]
                 GridRow {
-                    Text(workout.name).frame(width: columnWidths[0])
+                    Text(workout.name).frame(width: columnWidths[0], alignment: .center)
                     Text("\(Int(workout.weight)) \(settings.weightUnit.rawValue)")
-                        .frame(width: columnWidths[1])
+                        .frame(width: columnWidths[1], alignment: .center)
 
                     LazyVGrid(columns: Array(repeating: GridItem(.fixed(setButtonSize), spacing: horizontalSpacing), count: columnsCount), alignment: .leading, spacing: verticalSpacing) {
                         ForEach(localSets[workoutIndex].indices, id: \.self) { setIndex in
@@ -112,19 +112,23 @@ struct WorkoutView: View {
     }
 
     private var restTimerView: some View {
-        Text("Rest Timer: \(formatTime(timerSeconds ?? 0))")
-            .font(.title2)
-            .padding(.top, 20)
+        Group {
+            if let seconds = timerSeconds {
+                Text("Rest Timer: \(seconds / 60):\(String(format: "%02d", seconds % 60))")
+                    .font(.title2)
+                    .padding(.top, 20)
+            } else {
+                Text("Rest Timer: 0:00")
+                    .font(.title2)
+                    .padding(.top, 20)
+            }
+        }
     }
 
     private var workoutTimeView: some View {
-        Text("Workout Time: \(formatTime(workoutTime))")
+        Text("Workout Time: \(workoutTime / 60):\(String(format: "%02d", workoutTime % 60))")
             .font(.title2)
             .padding(.top, 5)
-    }
-
-    private func formatTime(_ seconds: Int) -> String {
-        "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
     }
 
     private var finishButton: some View {
@@ -172,21 +176,23 @@ struct WorkoutView: View {
         alertMessage = allSetsSuccessful ? "Workout Success!" : "Workout Failed :("
         showAlert = true
         workoutTimer?.invalidate()
-
         let resultItems = saveWorkoutResult()
         workoutManager.adjustWeightsAfterWorkout(context: context, results: resultItems, settings: settings)
     }
 
-
     @discardableResult
     private func saveWorkoutResult() -> [WorkoutResultItem] {
+        print("Saving WorkoutResult with \(workoutManager.workouts.count) workouts.")
+
         let resultItems: [WorkoutResultItem] = zip(workoutManager.workouts, localSets).map { workout, sets in
-            let success = sets.allSatisfy { $0.state == "success" }
+            let failedReps = sets.filter { $0.state != "success" }.map { $0.reps }
+            let success = failedReps.isEmpty
             return WorkoutResultItem(
                 id: workout.id,
                 name: workout.name,
                 weight: workout.weight,
-                success: success
+                success: success,
+                failedReps: failedReps
             )
         }
 
@@ -204,20 +210,39 @@ struct WorkoutView: View {
         return resultItems
     }
 
+    // MARK: - Tap Logic
     private func handleSetTap(workoutIndex: Int, setIndex: Int) {
+        guard workoutIndex < localSets.count, setIndex < localSets[workoutIndex].count else { return }
         var set = localSets[workoutIndex][setIndex]
+
         switch set.state {
         case "notStarted":
+            // First tap: Success (green)
             set.state = "success"
             startTimer(seconds: successRestTime)
+
         case "success":
+            // Second tap: Failure (red) and decrement reps
             set.state = "failure"
+            if set.reps > 0 {
+                set.reps -= 1
+            }
             startTimer(seconds: failureRestTime)
+
         case "failure":
-            resetSet(&set, workoutIndex: workoutIndex)
+            if set.reps > 0 {
+                // Keep decrementing reps on each tap
+                set.reps -= 1
+                startTimer(seconds: failureRestTime)
+            } else {
+                // Reset back to initial grey state with full reps
+                resetSet(&set, workoutIndex: workoutIndex)
+            }
+
         default:
             resetSet(&set, workoutIndex: workoutIndex)
         }
+
         localSets[workoutIndex][setIndex] = set
     }
 

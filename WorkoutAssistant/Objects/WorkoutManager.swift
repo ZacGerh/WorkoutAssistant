@@ -4,7 +4,7 @@ import SwiftData
 class WorkoutManager: ObservableObject {
     @Published var workouts: [Workout] = []
 
-    /// Load workouts from SwiftData and sort by insertion date.
+    // MARK: - Load Workouts
     func loadWorkouts(context: ModelContext) {
         let descriptor = FetchDescriptor<Workout>()
         do {
@@ -15,7 +15,7 @@ class WorkoutManager: ObservableObject {
         }
     }
 
-    /// Save a single workout.
+    // MARK: - Save a Workout
     func saveWorkout(_ workout: Workout, context: ModelContext) {
         context.insert(workout)
         do {
@@ -26,7 +26,7 @@ class WorkoutManager: ObservableObject {
         }
     }
 
-    /// Replace all workouts with a new list.
+    // MARK: - Replace All Workouts
     func replaceAll(_ newWorkouts: [Workout], context: ModelContext) {
         for workout in workouts {
             context.delete(workout)
@@ -44,39 +44,25 @@ class WorkoutManager: ObservableObject {
 
     // MARK: - Adjust Weights After Workout
     func adjustWeightsAfterWorkout(context: ModelContext, results: [WorkoutResultItem], settings: SettingsManager) {
-        print("⚙️ Adjusting weights based on workout results with thresholds...")
+        print("⚙️ Adjusting weights based on workout results...")
 
         for result in results {
-            guard let workout = workouts.first(where: { $0.id == result.id }) else {
-                print("⚠️ No matching workout found for \(result.name)")
-                continue
-            }
+            guard let workout = workouts.first(where: { $0.id == result.id }) else { continue }
 
             if result.success {
-                workout.consecutiveFailures = 0
-                workout.consecutiveSuccesses += 1
-
-                if workout.consecutiveSuccesses >= settings.incrementAfterSuccess {
-                    workout.weight += workout.incrementWeight
-                    workout.consecutiveSuccesses = 0
-                    print("✅ \(workout.name) incremented to \(workout.weight) \(settings.weightUnit.rawValue)")
-                }
+                // Increment logic
+                workout.weight += settings.defaultIncrement
+                workout.weight = roundToTolerance(workout.weight, tolerance: settings.weightTolerance)
+                print("✅ \(workout.name) incremented to \(workout.weight)\(settings.weightUnit.rawValue)")
             } else {
-                workout.consecutiveSuccesses = 0
-                workout.consecutiveFailures += 1
-
-                if workout.consecutiveFailures >= settings.decrementAfterFailures {
-                    if settings.usePercentageForDecrement {
-                        workout.weight = roundToTolerance(
-                            workout.weight * (settings.decrementPercentage / 100),
-                            tolerance: settings.defaultIncrement
-                        )
-                    } else {
-                        workout.weight = max(settings.defaultIncrement, workout.weight - settings.defaultIncrement)
-                    }
-                    workout.consecutiveFailures = 0
-                    print("❌ \(workout.name) decremented to \(workout.weight) \(settings.weightUnit.rawValue)")
+                // Failure logic: decrement based on settings
+                if settings.usePercentageForDecrement {
+                    workout.weight *= settings.decrementPercentage / 100
+                } else {
+                    workout.weight -= settings.defaultDecrement
                 }
+                workout.weight = max(0, roundToTolerance(workout.weight, tolerance: settings.weightTolerance))
+                print("❌ \(workout.name) decremented to \(workout.weight)\(settings.weightUnit.rawValue)")
             }
         }
 
@@ -86,7 +72,6 @@ class WorkoutManager: ObservableObject {
 
     // MARK: - Rounding Helper
     private func roundToTolerance(_ value: Double, tolerance: Double) -> Double {
-        let rounded = ceil(value / tolerance) * tolerance
-        return rounded
+        ceil(value / tolerance) * tolerance
     }
 }

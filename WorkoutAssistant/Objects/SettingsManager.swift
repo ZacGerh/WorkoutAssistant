@@ -12,8 +12,10 @@ class SettingsManager: ObservableObject {
     @AppStorage("decrementAfterFailures") var decrementAfterFailures: Int = 1
     @AppStorage("usePercentageForDecrement") var usePercentageForDecrement: Bool = true
     @AppStorage("decrementPercentage") var decrementPercentage: Double = 50
+    @AppStorage("defaultDecrement") var defaultDecrement: Double = 5   // NEW: Decrement weight (lbs/kg)
     @AppStorage("defaultStartingWeight") var defaultStartingWeight: Double = 45
-    @AppStorage("defaultIncrement") var defaultIncrement: Double = 5
+    @AppStorage("defaultIncrement") var defaultIncrement: Double = 5   // Increment weight (lbs/kg)
+    @AppStorage("weightTolerance") var weightTolerance: Double = 5     // NEW: Rounding tolerance
     @AppStorage("weightUnit") var weightUnitRaw: String = WeightUnit.lbs.rawValue
 
     var weightUnit: WeightUnit {

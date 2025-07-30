@@ -17,6 +17,9 @@ struct SettingsView: View {
                 if settings.usePercentageForDecrement {
                     Stepper("Decrement Percentage: \(Int(settings.decrementPercentage))%",
                             value: $settings.decrementPercentage, in: 1...100)
+                } else {
+                    Stepper("Default Decrement: \(Int(settings.defaultDecrement)) \(settings.weightUnit.rawValue)",
+                            value: $settings.defaultDecrement, in: 1...50)
                 }
             }
 
@@ -25,6 +28,8 @@ struct SettingsView: View {
                         value: $settings.defaultStartingWeight, in: 0...500)
                 Stepper("Default Increment: \(Int(settings.defaultIncrement)) \(settings.weightUnit.rawValue)",
                         value: $settings.defaultIncrement, in: 1...50)
+                Stepper("Weight Tolerance: \(Int(settings.weightTolerance)) \(settings.weightUnit.rawValue)",
+                        value: $settings.weightTolerance, in: 1...50)
             }
 
             Section(header: Text("Units")) {
