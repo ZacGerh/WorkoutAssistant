@@ -30,6 +30,10 @@ struct SettingsView: View {
                         value: $settings.defaultIncrement, in: 1...50)
                 Stepper("Weight Tolerance: \(Int(settings.weightTolerance)) \(settings.weightUnit.rawValue)",
                         value: $settings.weightTolerance, in: 1...50)
+                Stepper("Default Sets: \(settings.defaultSets)",
+                        value: $settings.defaultSets, in: 1...10)
+                Stepper("Default Reps: \(settings.defaultReps)",
+                        value: $settings.defaultReps, in: 1...50)
             }
 
             Section(header: Text("Units")) {

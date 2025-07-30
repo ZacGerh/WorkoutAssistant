@@ -1,6 +1,3 @@
-// ===== START FILE: WorkoutPlannerView.swift =====
-// Workout Planner with temporary editing state, alternating colors, and delete functionality.
-
 import SwiftUI
 import SwiftData
 
@@ -9,12 +6,19 @@ struct PlannerButtonStyle: ButtonStyle {
     let color: Color
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding()
+            .padding(6)
             .frame(maxWidth: .infinity)
             .background(color.opacity(configuration.isPressed ? 0.7 : 1.0))
             .foregroundColor(.white)
-            .cornerRadius(8)
+            .cornerRadius(6)
     }
+}
+
+// MARK: - CustomWeight (Identifiable)
+struct CustomWeight: Identifiable, Hashable {
+    var id = UUID()
+    var weight: Double
+    var count: Int
 }
 
 // MARK: - TempWorkout (Ephemeral Data)
@@ -25,19 +29,25 @@ struct TempWorkout: Identifiable {
     var incrementWeight: Double
     var reps: Int
     var setCount: Int
+    var useCustomWeights: Bool
+    var customWeights: [CustomWeight]
 
     init(id: UUID = UUID(),
          name: String = "",
          weight: Double = 0.0,
          incrementWeight: Double = 5.0,
          reps: Int = 10,
-         setCount: Int = 1) {
+         setCount: Int = 3,
+         useCustomWeights: Bool = false,
+         customWeights: [CustomWeight] = [CustomWeight(weight: 45, count: 1)]) {
         self.id = id
         self.name = name
         self.weight = weight
         self.incrementWeight = incrementWeight
         self.reps = reps
         self.setCount = setCount
+        self.useCustomWeights = useCustomWeights
+        self.customWeights = customWeights
     }
 
     init(from workout: Workout) {
@@ -47,6 +57,8 @@ struct TempWorkout: Identifiable {
         self.incrementWeight = workout.incrementWeight
         self.reps = workout.initialReps
         self.setCount = workout.sets.count
+        self.useCustomWeights = false
+        self.customWeights = [CustomWeight(weight: workout.weight, count: 1)]
     }
 
     func toWorkout() -> Workout {
@@ -134,23 +146,87 @@ struct WorkoutPlannerView: View {
                 .keyboardType(.decimalPad)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
 
-            Stepper(value: $tempWorkouts[index].setCount, in: 1...10) {
-                Text("Number of Sets: \(tempWorkouts[index].setCount)")
+            Toggle("Custom Weight Setup", isOn: $tempWorkouts[index].useCustomWeights)
+                .padding(.vertical, 4)
+
+            if tempWorkouts[index].useCustomWeights {
+                customWeightsGrid(for: index)
             }
 
-            Stepper(value: $tempWorkouts[index].reps, in: 1...20) {
-                Text("Reps per Set: \(tempWorkouts[index].reps)")
+            // Set and Rep Count
+            HStack {
+                Text("Set Count")
+                    .frame(width: 120, alignment: .leading)
+                Stepper(value: $tempWorkouts[index].setCount, in: 1...10) {
+                    Text("\(tempWorkouts[index].setCount)")
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
 
+            HStack {
+                Text("Rep Count")
+                    .frame(width: 120, alignment: .leading)
+                Stepper(value: $tempWorkouts[index].reps, in: 1...20) {
+                    Text("\(tempWorkouts[index].reps)")
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+
+            // Delete Workout Button
             Button(action: { withAnimation { deleteWorkout(at: index) } }) {
                 Label("Delete Workout", systemImage: "trash")
                     .foregroundColor(.red)
             }
             .padding(.top, 5)
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, 8)
         .listRowBackground(index % 2 == 0 ? Color(UIColor.systemGray6) : Color(UIColor.systemGray5))
         .cornerRadius(8)
+    }
+
+    private func customWeightsGrid(for index: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Header row
+            HStack {
+                Text("Weight (\(settings.weightUnit.rawValue))")
+                    .frame(width: 120, alignment: .leading)
+                Text("Count")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .font(.caption)
+            .foregroundColor(.gray)
+
+            // Rows
+            ForEach(tempWorkouts[index].customWeights, id: \.id) { customWeight in
+                HStack(spacing: 8) {
+                    Button(action: {
+                        removeWeightRow(at: index, weightID: customWeight.id)
+                    }) {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                            .frame(width: 24)
+                    }
+                    .buttonStyle(.borderless) // Applying borderless button style
+
+                    TextField("0", value: binding(for: customWeight, in: index).weight, format: .number)
+                        .keyboardType(.decimalPad)
+                        .frame(width: 80)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+
+                    Stepper(value: binding(for: customWeight, in: index).count, in: 1...10) {
+                        Text("\(binding(for: customWeight, in: index).count.wrappedValue)")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+
+            Button(action: { addWeightRow(at: index) }) {
+                Text("Add Weight")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PlannerButtonStyle(color: .blue))
+            .padding(.top, 4)
+        }
     }
 
     // MARK: - Logic
@@ -166,6 +242,24 @@ struct WorkoutPlannerView: View {
 
     private func deleteWorkout(at index: Int) {
         tempWorkouts.remove(at: index)
+    }
+
+    private func addWeightRow(at index: Int) {
+        guard index < tempWorkouts.count else { return }
+        tempWorkouts[index].customWeights.append(CustomWeight(weight: settings.defaultStartingWeight, count: 1))
+    }
+
+    private func removeWeightRow(at index: Int, weightID: UUID) {
+        guard index < tempWorkouts.count else { return }
+        var workout = tempWorkouts[index]
+        if let weightIndex = workout.customWeights.firstIndex(where: { $0.id == weightID }) {
+            workout.customWeights.remove(at: weightIndex)
+            tempWorkouts[index] = workout
+        }
+    }
+
+    private func binding(for customWeight: CustomWeight, in index: Int) -> Binding<CustomWeight> {
+        return $tempWorkouts[index].customWeights.first(where: { $0.id == customWeight.id }) ?? Binding.constant(customWeight)
     }
 }
 
