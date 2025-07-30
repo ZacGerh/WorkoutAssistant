@@ -1,4 +1,5 @@
 // Stores historical results of completed workouts.
+
 import Foundation
 import SwiftData
 
@@ -9,7 +10,12 @@ class WorkoutResult {
     var workouts: [WorkoutResultItem] // Details of each exercise performed
     var overallSuccess: Bool          // Whether all sets were successful
 
-    init(timestamp: Date, totalTime: Double, workouts: [WorkoutResultItem], overallSuccess: Bool) {
+    init(
+        timestamp: Date,
+        totalTime: Double,
+        workouts: [WorkoutResultItem],
+        overallSuccess: Bool
+    ) {
         self.timestamp = timestamp
         self.totalTime = totalTime
         self.workouts = workouts
@@ -19,11 +25,11 @@ class WorkoutResult {
 
 @Model
 class WorkoutResultItem {
-    var id: UUID
-    var name: String
-    var weight: Double
-    var success: Bool
-    var failedReps: [Int]             // List of reps completed for failed sets
+    var id: UUID                      // ID of the associated Workout
+    var name: String                  // Workout name
+    var weight: Double                // Weight used during workout
+    var success: Bool                 // Whether this workout succeeded
+    var failedReps: [Int]             // List of reps for failed sets
 
     init(id: UUID, name: String, weight: Double, success: Bool, failedReps: [Int] = []) {
         self.id = id

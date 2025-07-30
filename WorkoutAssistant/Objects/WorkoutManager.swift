@@ -6,7 +6,7 @@ import SwiftData
 class WorkoutManager: ObservableObject {
     @Published var workouts: [Workout] = []
 
-    // MARK: - Load Workouts
+    /// Load workouts from SwiftData and sort by insertion date.
     func loadWorkouts(context: ModelContext) {
         let descriptor = FetchDescriptor<Workout>()
         do {
@@ -17,7 +17,7 @@ class WorkoutManager: ObservableObject {
         }
     }
 
-    // MARK: - Save a Workout
+    /// Save a single workout.
     func saveWorkout(_ workout: Workout, context: ModelContext) {
         context.insert(workout)
         do {
@@ -28,7 +28,7 @@ class WorkoutManager: ObservableObject {
         }
     }
 
-    // MARK: - Replace All Workouts
+    /// Replace all workouts with a new list.
     func replaceAll(_ newWorkouts: [Workout], context: ModelContext) {
         for workout in workouts {
             context.delete(workout)

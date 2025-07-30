@@ -1,4 +1,5 @@
-// The landing page for the app, with navigation to Workout, Planner, History, and delete all data.
+// Main landing page with navigation to workouts, planner, and history.
+
 import SwiftUI
 import SwiftData
 
@@ -20,11 +21,7 @@ struct HomePageView: View {
                     WorkoutView()
                         .environmentObject(workoutManager)
                 }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.green)
-                .foregroundColor(.white)
-                .cornerRadius(8)
+                .buttonStyleMenu(color: .green)
 
                 // Navigation to Workout Planner
                 NavigationLink("Workout Planner") {
@@ -36,35 +33,21 @@ struct HomePageView: View {
                         }
                     )
                     .environmentObject(workoutManager)
-                    .onAppear {
-                        workoutManager.loadWorkouts(context: context)
-                    }
+                    .onAppear { workoutManager.loadWorkouts(context: context) }
                 }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(8)
+                .buttonStyleMenu(color: .blue)
 
                 // Navigation to Workout History
                 NavigationLink("Workout History") {
                     WorkoutHistoryPagerView()
                 }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.orange)
-                .foregroundColor(.white)
-                .cornerRadius(8)
+                .buttonStyleMenu(color: .orange)
 
                 // Delete All Data Button
                 Button("Delete All Data") {
                     showDeleteAllAlert = true
                 }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.red)
-                .foregroundColor(.white)
-                .cornerRadius(8)
+                .buttonStyleMenu(color: .red)
             }
             .padding()
             .alert("Delete All Data?",
@@ -83,7 +66,6 @@ struct HomePageView: View {
 
     /// Deletes all Workout and WorkoutResult data from SwiftData.
     private func deleteAllData() {
-        // Delete all workouts
         for workout in workoutManager.workouts {
             context.delete(workout)
         }
@@ -98,9 +80,22 @@ struct HomePageView: View {
 
         try? context.save()
         workoutManager.workouts.removeAll()
+        workoutManager.loadWorkouts(context: context) // Reload after delete
     }
 }
 
+// MARK: - Button Style Helper
+private extension View {
+    func buttonStyleMenu(color: Color) -> some View {
+        self.padding()
+            .frame(maxWidth: .infinity)
+            .background(color)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+    }
+}
+
+// Wrapper for Planner
 struct WorkoutPlannerWrapper: View {
     let onDismiss: () -> Void
     let existingWorkouts: [Workout]

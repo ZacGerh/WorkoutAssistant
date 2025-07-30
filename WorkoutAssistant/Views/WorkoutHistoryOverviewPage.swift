@@ -1,3 +1,5 @@
+// Shows an overview of workout history with success/failure bars.
+
 import SwiftUI
 import SwiftData
 import Charts
@@ -11,7 +13,7 @@ struct WorkoutHistoryOverviewPage: View {
                 Text("No workout history found.")
                     .foregroundColor(.gray)
             } else {
-                // Chart
+                // Chart: Success vs Failure by Date
                 Chart(results) { result in
                     BarMark(
                         x: .value("Date", result.timestamp),
@@ -39,6 +41,7 @@ struct WorkoutHistoryOverviewPage: View {
         }
     }
 
+    /// Formats time as "Xm Ys".
     private func formatTime(_ seconds: Double) -> String {
         let minutes = Int(seconds / 60)
         let remaining = Int(seconds.truncatingRemainder(dividingBy: 60))
