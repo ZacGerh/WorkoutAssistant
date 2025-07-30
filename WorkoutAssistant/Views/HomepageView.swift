@@ -1,10 +1,11 @@
-// Landing page for navigation to Today's Workout and Workout Planner.
-
+// The landing page for the app, with navigation to Workout, Planner, History, and delete all data.
 import SwiftUI
+import SwiftData
 
 struct HomePageView: View {
     @EnvironmentObject var workoutManager: WorkoutManager
     @Environment(\.modelContext) private var context
+    @State private var showDeleteAllAlert = false
 
     var body: some View {
         NavigationStack {
@@ -14,7 +15,7 @@ struct HomePageView: View {
                     .bold()
                     .padding(.top)
 
-                // Navigate to Today's Workout
+                // Navigation to Today's Workout
                 NavigationLink("Today's Workout") {
                     WorkoutView()
                         .environmentObject(workoutManager)
@@ -25,7 +26,7 @@ struct HomePageView: View {
                 .foregroundColor(.white)
                 .cornerRadius(8)
 
-                // Navigate to Workout Planner
+                // Navigation to Workout Planner
                 NavigationLink("Workout Planner") {
                     WorkoutPlannerWrapper(
                         onDismiss: {},
@@ -44,9 +45,59 @@ struct HomePageView: View {
                 .background(Color.blue)
                 .foregroundColor(.white)
                 .cornerRadius(8)
+
+                // Navigation to Workout History
+                NavigationLink("Workout History") {
+                    WorkoutHistoryPagerView()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.orange)
+                .foregroundColor(.white)
+                .cornerRadius(8)
+
+                // Delete All Data Button
+                Button("Delete All Data") {
+                    showDeleteAllAlert = true
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.red)
+                .foregroundColor(.white)
+                .cornerRadius(8)
             }
             .padding()
+            .alert("Delete All Data?",
+                   isPresented: $showDeleteAllAlert,
+                   actions: {
+                       Button("Cancel", role: .cancel) {}
+                       Button("Delete", role: .destructive) {
+                           deleteAllData()
+                       }
+                   },
+                   message: {
+                       Text("This will remove all workouts and workout history permanently.")
+                   })
         }
+    }
+
+    /// Deletes all Workout and WorkoutResult data from SwiftData.
+    private func deleteAllData() {
+        // Delete all workouts
+        for workout in workoutManager.workouts {
+            context.delete(workout)
+        }
+
+        // Delete all WorkoutResults if they exist
+        let resultDescriptor = FetchDescriptor<WorkoutResult>()
+        if let results = try? context.fetch(resultDescriptor) {
+            for result in results {
+                context.delete(result)
+            }
+        }
+
+        try? context.save()
+        workoutManager.workouts.removeAll()
     }
 }
 

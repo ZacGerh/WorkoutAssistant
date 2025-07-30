@@ -8,7 +8,12 @@ struct WorkoutAssistantApp: App {
 
     var sharedModelContainer: ModelContainer = {
         do {
-            let container = try ModelContainer(for: Workout.self, WorkoutSet.self)
+            let container = try ModelContainer(
+                for: Workout.self,
+                     WorkoutSet.self,
+                     WorkoutResult.self,
+                     WorkoutResultItem.self
+            )
             return container
         } catch {
             // If the container cannot be created, assume corrupted data and reset
@@ -16,6 +21,7 @@ struct WorkoutAssistantApp: App {
                 NotificationCenter.default.post(name: .corruptionDetected, object: nil)
             }
             print("SwiftData store might be corrupted: \(error)")
+
             let storeURL = URL.documentsDirectory.appending(path: "default.store")
             if FileManager.default.fileExists(atPath: storeURL.path) {
                 do {
@@ -25,14 +31,21 @@ struct WorkoutAssistantApp: App {
                     print("Failed to delete corrupted store: \(error)")
                 }
             }
+
             // Try creating a fresh container
             do {
-                return try ModelContainer(for: Workout.self, WorkoutSet.self)
+                return try ModelContainer(
+                    for: Workout.self,
+                         WorkoutSet.self,
+                         WorkoutResult.self,
+                         WorkoutResultItem.self
+                )
             } catch {
                 fatalError("Could not create fresh ModelContainer: \(error)")
             }
         }
     }()
+
 
     var body: some Scene {
         WindowGroup {

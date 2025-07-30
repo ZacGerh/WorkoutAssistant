@@ -1,4 +1,3 @@
-// WorkoutView with dynamic layout and inline comments for clarity
 import SwiftUI
 import SwiftData
 
@@ -20,6 +19,10 @@ struct WorkoutView: View {
     @State private var alertMessage: String = ""
     @State private var localSets: [[LocalSetState]] = []
 
+    @State private var workoutTime: Int = 0 // Total workout time (in seconds)
+    @State private var workoutTimer: Timer? = nil
+    @State private var workoutStartTime: Date = Date()
+
     // Constants for layout and timer behavior.
     private let successRestTime = 90
     private let failureRestTime = 180
@@ -40,12 +43,19 @@ struct WorkoutView: View {
                 ScrollView {
                     buildWorkoutGrid(availableWidth: availableWidth, columnsCount: columnsCount)
                     restTimerView
+                    workoutTimeView
                 }
                 finishButton
             }
         }
-        .onAppear(perform: loadWorkouts)
-        .onDisappear { currentTimer?.invalidate() }
+        .onAppear {
+            loadWorkouts()
+            startWorkoutTimer()
+        }
+        .onDisappear {
+            currentTimer?.invalidate()
+            workoutTimer?.invalidate()
+        }
     }
 
     // MARK: - UI Sections
@@ -113,6 +123,12 @@ struct WorkoutView: View {
         }
     }
 
+    private var workoutTimeView: some View {
+        Text("Workout Time: \(workoutTime / 60):\(String(format: "%02d", workoutTime % 60))")
+            .font(.title2)
+            .padding(.top, 5)
+    }
+
     private var finishButton: some View {
         Button(action: {
             finishWorkout()
@@ -136,9 +152,17 @@ struct WorkoutView: View {
 
     private func loadWorkouts() {
         workoutManager.loadWorkouts(context: context)
-        // Initialize local sets for each workout with default states.
         localSets = workoutManager.workouts.map { workout in
             (0..<workout.sets.count).map { _ in LocalSetState(reps: workout.initialReps, state: "notStarted") }
+        }
+    }
+
+    private func startWorkoutTimer() {
+        workoutStartTime = Date()
+        workoutTimer?.invalidate()
+        workoutTime = 0
+        workoutTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            workoutTime = Int(Date().timeIntervalSince(workoutStartTime))
         }
     }
 
@@ -149,9 +173,41 @@ struct WorkoutView: View {
     private func finishWorkout() {
         alertMessage = allSetsSuccessful ? "Workout Success!" : "Workout Failed :("
         showAlert = true
+        workoutTimer?.invalidate()
+        saveWorkoutResult()
+        
+
     }
 
-    // Handle tap interactions for a specific set button.
+    private func saveWorkoutResult() {
+        print("Saving WorkoutResult with \(workoutManager.workouts.count) workouts.")
+        print("Overall success: \(allSetsSuccessful)")
+        let resultItems: [WorkoutResultItem] = zip(workoutManager.workouts, localSets).map { workout, sets in
+            let failedReps = sets.filter { $0.state != "success" }.map { $0.reps }
+            let success = failedReps.isEmpty
+            return WorkoutResultItem(
+                id: workout.id,
+                name: workout.name,
+                weight: workout.weight,
+                success: success,
+                failedReps: failedReps
+            )
+        }
+
+        let overallSuccess = resultItems.allSatisfy { $0.success }
+
+        let result = WorkoutResult(
+            timestamp: Date(),
+            totalTime: Double(workoutTime),
+            workouts: resultItems,
+            overallSuccess: overallSuccess
+        )
+
+        context.insert(result)
+        try? context.save()
+    }
+
+    // Handle set button tap logic.
     private func handleSetTap(workoutIndex: Int, setIndex: Int) {
         guard workoutIndex < localSets.count, setIndex < localSets[workoutIndex].count else { return }
         var set = localSets[workoutIndex][setIndex]
@@ -202,7 +258,6 @@ struct WorkoutView: View {
         }
     }
 
-    // Start or restart the rest timer.
     private func startTimer(seconds: Int) {
         currentTimer?.invalidate()
         timerSeconds = seconds
