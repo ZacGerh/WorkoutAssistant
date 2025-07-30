@@ -1,6 +1,8 @@
 // Displays the saved workout history.
 import SwiftUI
 import SwiftData
+import Charts
+
 
 struct WorkoutHistoryView: View {
     @Environment(\.modelContext) private var context

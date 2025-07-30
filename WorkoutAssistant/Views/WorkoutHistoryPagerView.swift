@@ -1,13 +1,7 @@
-//
-//  WorkoutHistoryPagerView.swift
-//  WorkoutAssistant
-//
-//  Created by Zac Gerhardy on 7/29/25.
-//
-
-
 import SwiftUI
 import SwiftData
+import Charts
+
 
 struct WorkoutHistoryPagerView: View {
     @Environment(\.modelContext) private var context

@@ -1,32 +1,39 @@
-//
-//  WorkoutHistoryOverviewPage.swift
-//  WorkoutAssistant
-//
-//  Created by Zac Gerhardy on 7/29/25.
-//
-
-
 import SwiftUI
 import SwiftData
+import Charts
 
 struct WorkoutHistoryOverviewPage: View {
     let results: [WorkoutResult]
 
     var body: some View {
-        List {
+        VStack {
             if results.isEmpty {
                 Text("No workout history found.")
                     .foregroundColor(.gray)
             } else {
-                ForEach(results) { result in
-                    VStack(alignment: .leading) {
-                        Text(result.timestamp, style: .date)
-                            .font(.headline)
-                        Text("Duration: \(formatTime(result.totalTime))")
-                        Text("Overall Result: \(result.overallSuccess ? "Success" : "Failure")")
-                            .foregroundColor(result.overallSuccess ? .green : .red)
+                // Chart
+                Chart(results) { result in
+                    BarMark(
+                        x: .value("Date", result.timestamp),
+                        y: .value("Success", result.overallSuccess ? 1 : 0)
+                    )
+                    .foregroundStyle(result.overallSuccess ? .green : .red)
+                }
+                .frame(height: 200)
+                .padding()
+
+                // List of results
+                List {
+                    ForEach(results) { result in
+                        VStack(alignment: .leading) {
+                            Text(result.timestamp, style: .date)
+                                .font(.headline)
+                            Text("Duration: \(formatTime(result.totalTime))")
+                            Text("Overall Result: \(result.overallSuccess ? "Success" : "Failure")")
+                                .foregroundColor(result.overallSuccess ? .green : .red)
+                        }
+                        .padding(.vertical, 5)
                     }
-                    .padding(.vertical, 5)
                 }
             }
         }
