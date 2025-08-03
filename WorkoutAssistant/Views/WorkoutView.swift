@@ -59,8 +59,6 @@ struct WorkoutView: View {
         }
     }
 
-    // MARK: - UI Sections
-
     private var headerSection: some View {
         VStack(spacing: 5) {
             Text("Today's Workout!")
@@ -150,8 +148,6 @@ struct WorkoutView: View {
         }
     }
 
-    // MARK: - Data & Logic
-
     private func loadWorkouts() {
         workoutManager.loadWorkouts(context: context)
         localSets = workoutManager.workouts.map { workout in
@@ -210,35 +206,27 @@ struct WorkoutView: View {
         return resultItems
     }
 
-    // MARK: - Tap Logic
     private func handleSetTap(workoutIndex: Int, setIndex: Int) {
         guard workoutIndex < localSets.count, setIndex < localSets[workoutIndex].count else { return }
         var set = localSets[workoutIndex][setIndex]
 
         switch set.state {
         case "notStarted":
-            // First tap: Success (green)
             set.state = "success"
             startTimer(seconds: successRestTime)
-
         case "success":
-            // Second tap: Failure (red) and decrement reps
             set.state = "failure"
             if set.reps > 0 {
                 set.reps -= 1
             }
             startTimer(seconds: failureRestTime)
-
         case "failure":
             if set.reps > 0 {
-                // Keep decrementing reps on each tap
                 set.reps -= 1
                 startTimer(seconds: failureRestTime)
             } else {
-                // Reset back to initial grey state with full reps
                 resetSet(&set, workoutIndex: workoutIndex)
             }
-
         default:
             resetSet(&set, workoutIndex: workoutIndex)
         }
@@ -281,3 +269,5 @@ struct WorkoutView: View {
         }
     }
 }
+
+// ===== END FILE: WorkoutView.swift =====
