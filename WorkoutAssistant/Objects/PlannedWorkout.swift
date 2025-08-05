@@ -9,7 +9,7 @@ struct PlannedWorkout: Identifiable {
     var reps: Int
     var setCount: Int
     var useCustomWeights: Bool
-    var customWeights: [CustomWeight]
+    var customWeights: [WeightCount]    // ← changed
 
     init(id: UUID = UUID(),
          name: String = "",
@@ -18,7 +18,7 @@ struct PlannedWorkout: Identifiable {
          reps: Int = 10,
          setCount: Int = 3,
          useCustomWeights: Bool = false,
-         customWeights: [CustomWeight] = []) {
+         customWeights: [WeightCount] = []) {
         self.id = id
         self.name = name
         self.weight = weight
@@ -28,34 +28,35 @@ struct PlannedWorkout: Identifiable {
         self.useCustomWeights = useCustomWeights
         self.customWeights = customWeights
     }
-    
-    // Custom initializer for converting a Workout to a PlannedWorkout
+
+    // Converts a persisted Workout into a draft PlannedWorkout
     init(from workout: Workout) {
-        self.id = UUID()
+        self.id = workout.id
         self.name = workout.name
         self.weight = workout.weight
         self.incrementWeight = workout.incrementWeight
         self.reps = workout.initialReps
-        self.setCount = workout.sets.count // or any logic to calculate this
+        self.setCount = workout.sets.count
         self.useCustomWeights = workout.useCustomWeights
-        self.customWeights = workout.customWeights
-            .reduce(into: [Double: Int]()) { counts, weight in
-                counts[weight, default: 0] += 1
-            }
-            .map { CustomWeight(weight: $0.key, count: $0.value) }
+        // map each plate-count into WeightCount
+        let counts = workout.customWeights.reduce(into: [Double:Int]()) { acc, w in
+            acc[w, default: 0] += 1
+        }
+        self.customWeights = counts.map { WeightCount(weight: $0.key, count: $0.value) }
     }
 
-    // This is to convert from PlannedWorkout to Workout
+    // Converts draft back into a persistent Workout
     func toWorkout() -> Workout {
-        return Workout(
+        Workout(
             id: UUID(),
-            name: self.name,
-            weight: self.weight,
-            incrementWeight: self.incrementWeight,
-            initialReps: self.reps,
+            name: name,
+            weight: weight,
+            incrementWeight: incrementWeight,
+            initialReps: reps,
             sets: (0..<setCount).map { _ in WorkoutSet(reps: reps) },
-            useCustomWeights: self.useCustomWeights,
-            customWeights: self.customWeights.flatMap { Array(repeating: $0.weight, count: $0.count) }
+            useCustomWeights: useCustomWeights,
+            // flatten to [Double]
+            customWeights: customWeights.flatMap { Array(repeating: $0.weight, count: $0.count) }
         )
     }
 }

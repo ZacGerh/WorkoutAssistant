@@ -10,12 +10,10 @@ class Workout {
     var initialReps: Int
     @Relationship(deleteRule: .cascade) var sets: [WorkoutSet]
     var customWeights: [Double]
-
     var createdAt: Date
     var consecutiveSuccesses: Int
     var consecutiveFailures: Int
     var useCustomWeights: Bool
-    var setCount: Int
 
     init(
         id: UUID = UUID(),
@@ -28,8 +26,7 @@ class Workout {
         consecutiveSuccesses: Int = 0,
         consecutiveFailures: Int = 0,
         useCustomWeights: Bool = false,
-        customWeights: [Double] = [],
-        setCount: Int = 0
+        customWeights: [Double] = []
     ) {
         self.id = id
         self.name = name
@@ -42,20 +39,6 @@ class Workout {
         self.consecutiveFailures = consecutiveFailures
         self.useCustomWeights = useCustomWeights
         self.customWeights = customWeights
-        self.setCount = setCount
-    }
-}
-
-@Model
-class CustomWeight: Identifiable, Hashable {
-    @Attribute(.unique) var id: UUID
-    var weight: Double
-    var count: Int
-
-    init(id: UUID = UUID(), weight: Double, count: Int) {
-        self.id = id
-        self.weight = weight
-        self.count = count
     }
 }
 

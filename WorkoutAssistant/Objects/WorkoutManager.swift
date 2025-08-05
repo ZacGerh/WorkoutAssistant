@@ -48,35 +48,30 @@ class WorkoutManager: ObservableObject {
 
         for result in results {
             guard let workout = workouts.first(where: { $0.id == result.id }) else { continue }
-
+            var newWeight = workout.weight
             if result.success {
-                var newWeight = workout.weight + settings.defaultIncrement
+                newWeight += settings.defaultIncrement
                 
-                // Check if the incremented weight is valid
-                if workout.useCustomWeights {
-                    newWeight = findClosestValidWeight(oldWeight: workout.weight, targetWeight: newWeight, availableWeights: workout.customWeights, increment: result.success)
-                    
-                } else {
-                    newWeight = roundToTolerance(newWeight, tolerance: settings.weightTolerance)
-                }
-                workout.weight = newWeight
-                print("✅ \(workout.name) incremented to \(workout.weight)\(settings.weightUnit.rawValue)")
             } else {
-                var newWeight = workout.weight
                 // Failure logic: decrement based on settings
                 if settings.usePercentageForDecrement {
                     newWeight *= settings.decrementPercentage / 100
                 } else {
                     newWeight -= settings.defaultDecrement
                 }
-                if workout.useCustomWeights {
-                    newWeight = findClosestValidWeight(oldWeight: workout.weight, targetWeight: newWeight, availableWeights: workout.customWeights, increment: result.success)
-                } else {
-                    newWeight = max(0, roundToTolerance(newWeight, tolerance: settings.weightTolerance))
-                }
-                workout.weight = newWeight
-                print("❌ \(workout.name) decremented to \(workout.weight)\(settings.weightUnit.rawValue)")
             }
+            
+            if workout.useCustomWeights {
+                if result.success {
+                    newWeight = nextHigherWeight(current: newWeight, available: workout.customWeights)
+                } else {
+                    newWeight = nextLowerWeight(current: newWeight, available: workout.customWeights)
+                }
+            } else {
+                newWeight = roundToTolerance(newWeight, tolerance: settings.weightTolerance)
+            }
+            workout.weight = newWeight
+
         }
 
         try? context.save()
@@ -89,34 +84,24 @@ class WorkoutManager: ObservableObject {
     }
 }
 
-private func findClosestValidWeight(oldWeight: Double, targetWeight: Double, availableWeights: [Double], increment : Bool) -> Double {
-    
-    let sortedWeights = availableWeights.sorted { $0 > $1 }
-    let closestWeight = sortedWeights.last(where: { $0 >= targetWeight }) ?? 0
-    if(closestWeight == targetWeight){
-        return targetWeight
+// MARK: – Plate combinatorics
+private func allCombinationWeights(from available: [Double]) -> [Double] {
+    var sums: Set<Double> = [0]
+    for plate in available {
+        let newSums = sums.map { $0 + plate }
+        sums.formUnion(newSums)
     }
-    else{
-        let newWeight = findClosestValidWeightRecursive(targetWeight: targetWeight, availableWeights: sortedWeights)
-        if increment && (newWeight == oldWeight || abs(newWeight-oldWeight) > abs(closestWeight-oldWeight)) {
-            return closestWeight
-        }
-        return newWeight
-    }
+    sums.remove(0)              // drop the 0lb option
+    return Array(sums).sorted() // ascending
 }
 
-private func findClosestValidWeightRecursive(targetWeight: Double, availableWeights: [Double]) -> Double {
-    
-    let weight = availableWeights.first ?? 0
-    if weight == targetWeight || availableWeights.count <= 1 {
-        return weight
-    }
-    
-    if weight < targetWeight {
-        // Recursive call to reduce the target weight by the current weight
-        let remainingWeight = targetWeight - weight
-        return weight + findClosestValidWeightRecursive(targetWeight: remainingWeight, availableWeights: Array(availableWeights.dropFirst()))
-    }
-
-    return findClosestValidWeightRecursive(targetWeight: targetWeight, availableWeights: Array(availableWeights.dropFirst()))
+/// Smallest valid weight strictly > current
+private func nextHigherWeight(current: Double, available: [Double]) -> Double {
+    allCombinationWeights(from: available).first { $0 >= current } ?? current
 }
+
+/// Largest valid weight strictly < current
+private func nextLowerWeight(current: Double, available: [Double]) -> Double {
+    allCombinationWeights(from: available).last { $0 <= current } ?? current
+}
+

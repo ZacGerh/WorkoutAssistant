@@ -35,7 +35,10 @@ struct WorkoutPlannerView: View {
         }
         .padding()
         .onAppear {
-            tempWorkouts = existingWorkouts.map { PlannedWorkout(from: $0) }
+            // First load from SwiftData…
+            workoutManager.loadWorkouts(context: context)
+            // …then map the freshly loaded workouts into your draft array
+            tempWorkouts = workoutManager.workouts.map { PlannedWorkout(from: $0) }
         }
     }
 

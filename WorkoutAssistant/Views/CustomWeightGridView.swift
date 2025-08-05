@@ -15,18 +15,42 @@ struct CustomWeightGridView: View {
             .font(.caption)
             .foregroundColor(.gray)
 
+            // ===== in CustomWeightGridView.swift, inside your ForEach row =====
             ForEach(plannedWorkout.customWeights, id: \.id) { customWeight in
                 HStack(spacing: 8) {
-                    Button(action: {
+                    Button {
                         removeWeightRow(weightID: customWeight.id)
-                    }) {
+                    } label: {
                         Image(systemName: "trash")
                             .foregroundColor(.red)
                             .frame(width: 24)
                     }
                     .buttonStyle(.borderless)
 
-                    TextField("0", value: binding(for: customWeight).weight, format: .number)
+                    // 1) Grab the binding to the Double weight
+                    let weightBinding = binding(for: customWeight).weight
+
+                    // 2) Wrap it in a String-binding that treats empty text as 0
+                    let textBinding = Binding<String>(
+                        get: {
+                            let w = weightBinding.wrappedValue
+                            // show as "50" if whole, otherwise full double
+                            return (w.truncatingRemainder(dividingBy: 1) == 0)
+                                ? String(Int(w))
+                                : String(w)
+                        },
+                        set: { txt in
+                            if let v = Double(txt) {
+                                weightBinding.wrappedValue = v
+                            } else if txt.isEmpty {
+                                weightBinding.wrappedValue = 0
+                            }
+                            // otherwise ignore non-numeric
+                        }
+                    )
+
+                    // 3) Use the String-based TextField
+                    TextField("0", text: textBinding)
                         .keyboardType(.decimalPad)
                         .frame(width: 80)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -38,21 +62,24 @@ struct CustomWeightGridView: View {
                 }
             }
 
+
             Button(action: { addWeightRow() }) {
                 Text("Add Weight")
                     .frame(maxWidth: .infinity)
+                    .frame(height: 5)
             }
             .buttonStyle(PlannerButtonStyle(color: .blue))
-            .padding(.top, 4)
+            .padding(.top, 0)
+            
         }
     }
 
-    private func binding(for customWeight: CustomWeight) -> Binding<CustomWeight> {
+    private func binding(for customWeight: WeightCount) -> Binding<WeightCount> {
         return $plannedWorkout.customWeights.first(where: { $0.id == customWeight.id }) ?? Binding.constant(customWeight)
     }
 
     private func addWeightRow() {
-        plannedWorkout.customWeights.append(CustomWeight(weight: settings.defaultStartingWeight, count: 1))
+        plannedWorkout.customWeights.append(WeightCount(weight: settings.defaultStartingWeight, count: 1))
     }
 
     private func removeWeightRow(weightID: UUID) {

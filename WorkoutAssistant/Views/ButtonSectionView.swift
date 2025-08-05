@@ -8,19 +8,6 @@
 
 import SwiftUI
 
-// MARK: - Planner Button Style
-struct PlannerButtonStyle: ButtonStyle {
-    let color: Color
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(6)
-            .frame(maxWidth: .infinity)
-            .background(color.opacity(configuration.isPressed ? 0.7 : 1.0))
-            .foregroundColor(.white)
-            .cornerRadius(6)
-    }
-}
-
 struct ButtonSectionView: View {
     var addWorkout: () -> Void
     var saveWorkouts: () -> Void
