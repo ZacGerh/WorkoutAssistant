@@ -9,7 +9,7 @@ class Workout {
     var incrementWeight: Double
     var initialReps: Int
     @Relationship(deleteRule: .cascade) var sets: [WorkoutSet]
-    @Relationship var customWeights: [CustomWeight] // Relationship to custom weights
+    var customWeights: [Double]
 
     var createdAt: Date
     var consecutiveSuccesses: Int
@@ -28,7 +28,7 @@ class Workout {
         consecutiveSuccesses: Int = 0,
         consecutiveFailures: Int = 0,
         useCustomWeights: Bool = false,
-        customWeights: [CustomWeight] = [],
+        customWeights: [Double] = [],
         setCount: Int = 0
     ) {
         self.id = id

@@ -20,7 +20,7 @@ struct WorkoutView: View {
     @State private var alertMessage: String = ""
     @State private var localSets: [[LocalSetState]] = []
 
-    @State private var workoutTime: Int = 0 // Total workout time (in seconds)
+    @State private var workoutTime: Int = 0
     @State private var workoutTimer: Timer? = nil
     @State private var workoutStartTime: Date = Date()
 
@@ -28,16 +28,12 @@ struct WorkoutView: View {
     private let successRestTime = 90
     private let failureRestTime = 180
     private let notStartedRestTime = 0
-    private let columnWidths: [CGFloat] = [75, 75]
-    private let verticalSpacing: CGFloat = 15
-    private let horizontalSpacing: CGFloat = 5
-    private let setButtonSize: CGFloat = 50
 
     var body: some View {
         GeometryReader { geometry in
             let totalHorizontalPadding: CGFloat = 32
-            let availableWidth = max(0, geometry.size.width - columnWidths[0] - columnWidths[1] - totalHorizontalPadding)
-            let columnsCount = max(Int(availableWidth / (setButtonSize + horizontalSpacing)), 1)
+            let availableWidth = max(0, geometry.size.width - 150 - totalHorizontalPadding)
+            let columnsCount = max(Int(availableWidth / 60), 1)
 
             VStack {
                 headerSection
@@ -72,21 +68,21 @@ struct WorkoutView: View {
     }
 
     private func buildWorkoutGrid(availableWidth: CGFloat, columnsCount: Int) -> some View {
-        Grid(horizontalSpacing: horizontalSpacing, verticalSpacing: verticalSpacing) {
+        Grid(horizontalSpacing: 5, verticalSpacing: 15) {
             GridRow {
-                Text("Workout").bold().frame(width: columnWidths[0], alignment: .center)
-                Text("Weight").bold().frame(width: columnWidths[1], alignment: .center)
+                Text("Workout").bold().frame(width: 75, alignment: .center)
+                Text("Weight").bold().frame(width: 75, alignment: .center)
                 Text("Sets and Reps").bold().frame(maxWidth: availableWidth, alignment: .leading)
             }
 
             ForEach(localSets.indices, id: \.self) { workoutIndex in
                 let workout = workoutManager.workouts[workoutIndex]
                 GridRow {
-                    Text(workout.name).frame(width: columnWidths[0], alignment: .center)
+                    Text(workout.name).frame(width: 75, alignment: .center)
                     Text("\(Int(workout.weight)) \(settings.weightUnit.rawValue)")
-                        .frame(width: columnWidths[1], alignment: .center)
+                        .frame(width: 75, alignment: .center)
 
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(setButtonSize), spacing: horizontalSpacing), count: columnsCount), alignment: .leading, spacing: verticalSpacing) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(50), spacing: 5), count: columnsCount), alignment: .leading, spacing: 15) {
                         ForEach(localSets[workoutIndex].indices, id: \.self) { setIndex in
                             let setBinding = Binding<LocalSetState>(
                                 get: { localSets[workoutIndex][setIndex] },
@@ -169,13 +165,11 @@ struct WorkoutView: View {
     }
 
     private func finishWorkout() {
-        alertMessage = allSetsSuccessful ? "Workout Success!" : "Workout Failed :("
-        showAlert = true
         workoutTimer?.invalidate()
         let resultItems = saveWorkoutResult()
         workoutManager.adjustWeightsAfterWorkout(context: context, results: resultItems, settings: settings)
     }
-
+    
     @discardableResult
     private func saveWorkoutResult() -> [WorkoutResultItem] {
         print("Saving WorkoutResult with \(workoutManager.workouts.count) workouts.")
@@ -234,6 +228,14 @@ struct WorkoutView: View {
         localSets[workoutIndex][setIndex] = set
     }
 
+    // Update the weight directly
+    private func updateWeight(_ weight: Double) {
+        if let workout = workoutManager.workouts.first {
+            workout.weight = weight
+        }
+    }
+
+    // Reset the set state
     private func resetSet(_ set: inout LocalSetState, workoutIndex: Int) {
         set.state = "notStarted"
         set.reps = workoutManager.workouts[workoutIndex].initialReps
@@ -269,5 +271,3 @@ struct WorkoutView: View {
         }
     }
 }
-
-// ===== END FILE: WorkoutView.swift =====

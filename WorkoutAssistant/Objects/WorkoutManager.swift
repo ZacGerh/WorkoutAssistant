@@ -50,18 +50,31 @@ class WorkoutManager: ObservableObject {
             guard let workout = workouts.first(where: { $0.id == result.id }) else { continue }
 
             if result.success {
-                // Increment logic
-                workout.weight += settings.defaultIncrement
-                workout.weight = roundToTolerance(workout.weight, tolerance: settings.weightTolerance)
+                var newWeight = workout.weight + settings.defaultIncrement
+                
+                // Check if the incremented weight is valid
+                if workout.useCustomWeights {
+                    newWeight = findClosestValidWeight(oldWeight: workout.weight, targetWeight: newWeight, availableWeights: workout.customWeights, increment: result.success)
+                    
+                } else {
+                    newWeight = roundToTolerance(newWeight, tolerance: settings.weightTolerance)
+                }
+                workout.weight = newWeight
                 print("✅ \(workout.name) incremented to \(workout.weight)\(settings.weightUnit.rawValue)")
             } else {
+                var newWeight = workout.weight
                 // Failure logic: decrement based on settings
                 if settings.usePercentageForDecrement {
-                    workout.weight *= settings.decrementPercentage / 100
+                    newWeight *= settings.decrementPercentage / 100
                 } else {
-                    workout.weight -= settings.defaultDecrement
+                    newWeight -= settings.defaultDecrement
                 }
-                workout.weight = max(0, roundToTolerance(workout.weight, tolerance: settings.weightTolerance))
+                if workout.useCustomWeights {
+                    newWeight = findClosestValidWeight(oldWeight: workout.weight, targetWeight: newWeight, availableWeights: workout.customWeights, increment: result.success)
+                } else {
+                    newWeight = max(0, roundToTolerance(newWeight, tolerance: settings.weightTolerance))
+                }
+                workout.weight = newWeight
                 print("❌ \(workout.name) decremented to \(workout.weight)\(settings.weightUnit.rawValue)")
             }
         }
@@ -74,4 +87,36 @@ class WorkoutManager: ObservableObject {
     private func roundToTolerance(_ value: Double, tolerance: Double) -> Double {
         ceil(value / tolerance) * tolerance
     }
+}
+
+private func findClosestValidWeight(oldWeight: Double, targetWeight: Double, availableWeights: [Double], increment : Bool) -> Double {
+    
+    let sortedWeights = availableWeights.sorted { $0 > $1 }
+    let closestWeight = sortedWeights.last(where: { $0 >= targetWeight }) ?? 0
+    if(closestWeight == targetWeight){
+        return targetWeight
+    }
+    else{
+        let newWeight = findClosestValidWeightRecursive(targetWeight: targetWeight, availableWeights: sortedWeights)
+        if increment && (newWeight == oldWeight || abs(newWeight-oldWeight) > abs(closestWeight-oldWeight)) {
+            return closestWeight
+        }
+        return newWeight
+    }
+}
+
+private func findClosestValidWeightRecursive(targetWeight: Double, availableWeights: [Double]) -> Double {
+    
+    let weight = availableWeights.first ?? 0
+    if weight == targetWeight || availableWeights.count <= 1 {
+        return weight
+    }
+    
+    if weight < targetWeight {
+        // Recursive call to reduce the target weight by the current weight
+        let remainingWeight = targetWeight - weight
+        return weight + findClosestValidWeightRecursive(targetWeight: remainingWeight, availableWeights: Array(availableWeights.dropFirst()))
+    }
+
+    return findClosestValidWeightRecursive(targetWeight: targetWeight, availableWeights: Array(availableWeights.dropFirst()))
 }

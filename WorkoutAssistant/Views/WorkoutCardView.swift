@@ -53,8 +53,8 @@ struct WorkoutCardView: View {
             HStack {
                 Text("Rep Count")
                     .frame(width: 120, alignment: .leading)
-                Stepper(value: $plannedWorkout.initialReps, in: 1...20) {
-                    Text("\(plannedWorkout.initialReps)")
+                Stepper(value: $plannedWorkout.reps, in: 1...20) {
+                    Text("\(plannedWorkout.reps)")
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
