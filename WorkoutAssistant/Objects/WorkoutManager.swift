@@ -50,7 +50,7 @@ class WorkoutManager: ObservableObject {
             guard let workout = workouts.first(where: { $0.id == result.id }) else { continue }
             var newWeight = workout.weight
             if result.success {
-                newWeight += settings.defaultIncrement
+                newWeight += workout.incrementWeight
                 
             } else {
                 // Failure logic: decrement based on settings
