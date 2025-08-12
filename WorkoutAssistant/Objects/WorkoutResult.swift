@@ -6,7 +6,7 @@ class WorkoutResult: Identifiable {
     @Attribute(.unique) var id: UUID
     var timestamp: Date
     var totalTime: Double
-    var workouts: [WorkoutResultItem]
+    @Relationship(deleteRule: .cascade) var workouts: [WorkoutResultItem]
     var overallSuccess: Bool
 
     init(
