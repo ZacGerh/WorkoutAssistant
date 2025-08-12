@@ -10,10 +10,10 @@ class WorkoutResult: Identifiable {
     var workouts: [WorkoutResultItem]
     var overallSuccess: Bool
 
-    // NEW: run info (stored in miles)
+    // Run info (label-only units; we store the number you enter)
     var runEnabled: Bool
-    var runGoalMiles: Double
-    var runTotalMiles: Double
+    var runGoalMiles: Double   // naming kept for backward compat; treated as a plain number
+    var runTotalMiles: Double  // naming kept for backward compat; treated as a plain number
 
     init(
         id: UUID = UUID(),
@@ -44,18 +44,26 @@ class WorkoutResultItem {
     var success: Bool
     var failedReps: [Int]
 
+    // NEW: snapshot so totals don’t drift if plan changes later
+    var totalSetsAtTime: Int
+    var repsAtTime: Int
+
     init(
         id: UUID,
         name: String,
         weight: Double,
         success: Bool,
-        failedReps: [Int] = []
+        failedReps: [Int] = [],
+        totalSetsAtTime: Int = 0,
+        repsAtTime: Int = 0
     ) {
         self.id = id
         self.name = name
         self.weight = weight
         self.success = success
         self.failedReps = failedReps
+        self.totalSetsAtTime = totalSetsAtTime
+        self.repsAtTime = repsAtTime
     }
 }
 // ===== END FILE: WorkoutResult.swift =====

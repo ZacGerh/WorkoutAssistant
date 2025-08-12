@@ -1,6 +1,6 @@
+// ===== START FILE: WorkoutHistoryOverviewPage.swift =====
 import SwiftUI
 import SwiftData
-import Charts
 
 struct WorkoutHistoryOverviewPage: View {
     @Environment(\.modelContext) private var context
@@ -9,21 +9,15 @@ struct WorkoutHistoryOverviewPage: View {
     let results: [WorkoutResult]
 
     var body: some View {
-        VStack {
+        VStack(spacing: 12) {
             if results.isEmpty {
                 Text("No workout history found.")
                     .foregroundColor(.gray)
             } else {
-                Chart(results) { result in
-                    BarMark(
-                        x: .value("Date", result.timestamp),
-                        y: .value("Success", result.overallSuccess ? 1 : 0)
-                    )
-                    .foregroundStyle(result.overallSuccess ? .green : .red)
-                }
-                .frame(height: 200)
-                .padding()
+                // Summary + window filter
+                HistorySummaryView(results: results, workoutName: nil)
 
+                // Sessions list (unchanged, keeps delete buttons)
                 List {
                     ForEach(results) { result in
                         VStack(alignment: .leading, spacing: 6) {
@@ -76,3 +70,4 @@ struct WorkoutHistoryOverviewPage: View {
         return "\(minutes)m \(remaining)s"
     }
 }
+// ===== END FILE: WorkoutHistoryOverviewPage.swift =====

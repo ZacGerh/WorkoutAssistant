@@ -305,22 +305,32 @@ struct WorkoutView: View {
 
     @discardableResult
     private func saveWorkoutResult() -> [WorkoutResultItem] {
+        // Build per-workout items with snapshots
         let resultItems: [WorkoutResultItem] = zip(workoutManager.workouts, localSets).map { workout, sets in
             let failedReps = sets.filter { $0.state != "success" }.map { $0.reps }
             let success = failedReps.isEmpty
+
+            // Snapshots at time of logging
+            let totalSetsAtTime = sets.count
+            let repsAtTime = workout.initialReps
+
             return WorkoutResultItem(
                 id: workout.id,
                 name: workout.name,
                 weight: workout.weight,
                 success: success,
-                failedReps: failedReps
+                failedReps: failedReps,
+                totalSetsAtTime: totalSetsAtTime,
+                repsAtTime: repsAtTime
             )
         }
 
         // Combine lift + run success (when run is enabled)
         var overallSuccess = resultItems.allSatisfy { $0.success }
-        if let plan = activePlan, plan.includeRunSection {
-            let runSuccess = ranDistance >= plan.runGoalDistance
+        let plan = activePlan
+        let runIsOn = (plan?.includeRunSection ?? false)
+        if runIsOn {
+            let runSuccess = ranDistance >= (plan?.runGoalDistance ?? 0)
             overallSuccess = overallSuccess && runSuccess
         }
 
@@ -328,7 +338,10 @@ struct WorkoutView: View {
             timestamp: Date(),
             totalTime: Double(workoutTime),
             workouts: resultItems,
-            overallSuccess: overallSuccess
+            overallSuccess: overallSuccess,
+            runEnabled: runIsOn,
+            runGoalMiles: plan?.runGoalDistance ?? 0, // label-only “miles”
+            runTotalMiles: ranDistance                 // label-only “miles”
         )
 
         context.insert(result)
