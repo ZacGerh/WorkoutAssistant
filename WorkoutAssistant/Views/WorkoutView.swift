@@ -1,3 +1,4 @@
+// ===== START FILE: WorkoutView.swift =====
 import SwiftUI
 import SwiftData
 
@@ -13,37 +14,51 @@ struct WorkoutView: View {
     @EnvironmentObject var settings: SettingsManager
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    
+
+    // Access the (single) plan that toggles the run section
+    @Query private var plans: [WorkoutPlan]
+    private var activePlan: WorkoutPlan? { plans.first }
+
+    // Run UI state
+    @State private var ranDistance: Double = 0
+    @State private var useDefaultLap: Bool = true
+    @State private var lapText: String = ""
+
     @State private var timerSeconds: Int? = nil
     @State private var currentTimer: Timer? = nil
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     @State private var localSets: [[LocalSetState]] = []
-    
+
     @State private var workoutTime: Int = 0
     @State private var workoutTimer: Timer? = nil
     @State private var workoutStartTime: Date = Date()
-    
+
     // Constants for layout and timer behavior.
     private let successRestTime = 90
     private let failureRestTime = 180
     private let notStartedRestTime = 0
-    
+
     private let nameWidth: CGFloat = 100
     private let weightWidth: CGFloat = 75
     private let horizontalSpacing: CGFloat = 10
     private let rowSpacing: CGFloat = 12
-    
+
     var body: some View {
         GeometryReader { geometry in
             let fixedColumnsWidth: CGFloat = nameWidth + weightWidth // name + weight
             let availableWidth = max(0, geometry.size.width - fixedColumnsWidth - horizontalSpacing * 2 - rowSpacing * 2)
             let columnsCount = max(Int(availableWidth / 60), 1)
 
-            
             VStack {
                 headerSection
                 ScrollView {
+                    // Run section (only when plan toggle is ON)
+                    if let plan = activePlan, plan.includeRunSection {
+                        runSection(plan: plan)
+                            .padding(.horizontal, horizontalSpacing)
+                    }
+
                     buildWorkoutGrid(availableWidth: availableWidth, columnsCount: columnsCount)
                     restTimerView
                     workoutTimeView
@@ -54,13 +69,27 @@ struct WorkoutView: View {
         .onAppear {
             loadWorkouts()
             startWorkoutTimer()
+
+            // 🔧 Ensure there is only one plan row
+            if plans.count > 1 {
+                for p in plans.dropFirst() { context.delete(p) }
+                try? context.save()
+            }
+
+            if let plan = activePlan, plan.includeRunSection {
+                ranDistance = 0
+                useDefaultLap = true
+                lapText = formatted(plan.defaultLapDistance)
+            }
         }
+
         .onDisappear {
             currentTimer?.invalidate()
             workoutTimer?.invalidate()
         }
     }
-    
+
+    // MARK: - Header
     private var headerSection: some View {
         VStack(spacing: 5) {
             Text("Today's Workout!")
@@ -72,7 +101,53 @@ struct WorkoutView: View {
         }
         .padding(.top)
     }
-    
+
+    // MARK: - Run Section
+    private func runSection(plan: WorkoutPlan) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Run Goal: \(formatted(plan.runGoalDistance)) \(settings.runUnit.rawValue)")
+                .font(.headline)
+
+            HStack(spacing: 12) {
+                Text("Ran: \(formatted(ranDistance)) \(settings.runUnit.rawValue)")
+                Spacer()
+                Button("Clear") {
+                    ranDistance = 0
+                }
+                .buttonStyle(.bordered)
+            }
+
+            HStack(spacing: 12) {
+                Button("Add") {
+                    let lap = useDefaultLap ? plan.defaultLapDistance : (Double(lapText) ?? 0)
+                    ranDistance += max(0, lap)
+                }
+                .buttonStyle(.borderedProminent)
+
+                TextField("0", text: $lapText)
+                    .keyboardType(.decimalPad)
+                    .frame(width: 80)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .disabled(useDefaultLap)
+                    .opacity(useDefaultLap ? 0.5 : 1.0)
+
+                Toggle("Use Default", isOn: $useDefaultLap)
+                    .onChange(of: useDefaultLap) { _, nowOn in
+                        if nowOn {
+                            lapText = formatted(plan.defaultLapDistance)
+                        }
+                    }
+            }
+        }
+        .padding(12)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8).stroke(Color(UIColor.separator), lineWidth: 0.5)
+        )
+        .cornerRadius(8)
+    }
+
+    // MARK: - Grid (outer rounded only)
     private func buildWorkoutGrid(availableWidth: CGFloat, columnsCount: Int) -> some View {
         let cornerRadius: CGFloat = 12
 
@@ -85,7 +160,7 @@ struct WorkoutView: View {
                         .fill(Color(UIColor.systemGroupedBackground))
                 )
 
-            // Your grid, clipped to the same rounded shape so only outer corners round
+            // Inner content clipped so only outer corners are rounded
             Grid(horizontalSpacing: horizontalSpacing, verticalSpacing: 0) {
                 headerRow(availableWidth: availableWidth)
                 ForEach(Array(localSets.enumerated()), id: \.offset) { (workoutIndex, _) in
@@ -100,7 +175,22 @@ struct WorkoutView: View {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    
+    @ViewBuilder
+    private func headerRow(availableWidth: CGFloat) -> some View {
+        GridRow {
+            HStack(alignment: .top, spacing: rowSpacing) {
+                Text("Workout").bold().frame(width: nameWidth, alignment: .leading)
+                Text("\(settings.weightUnit.rawValue)").bold().frame(width: weightWidth, alignment: .leading)
+                Text("Sets and Reps").bold().frame(maxWidth: availableWidth, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color(UIColor.quaternarySystemFill))
+            .overlay(Divider(), alignment: .bottom) // separator
+            .gridCellColumns(3)
+        }
+    }
+
     private func buildWorkoutGridRow(workoutIndex: Int,
                                      availableWidth: CGFloat,
                                      columnsCount: Int) -> some View {
@@ -122,7 +212,6 @@ struct WorkoutView: View {
         }
     }
 
-    
     private func buildSetButtons(workoutIndex: Int, availableWidth: CGFloat, columnsCount: Int) -> some View {
         LazyVGrid(
             columns: Array(repeating: GridItem(.fixed(50), spacing: 5), count: columnsCount),
@@ -147,23 +236,7 @@ struct WorkoutView: View {
         .frame(maxWidth: availableWidth, alignment: .leading)
     }
 
-    @ViewBuilder
-    private func headerRow(availableWidth: CGFloat) -> some View {
-        GridRow {
-            HStack(alignment: .top, spacing: rowSpacing) {
-                Text("Workout").bold().frame(width: nameWidth, alignment: .leading)
-                Text("\(settings.weightUnit.rawValue)").bold().frame(width: weightWidth, alignment: .leading)
-                Text("Sets and Reps").bold().frame(maxWidth: availableWidth, alignment: .leading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(Color(UIColor.quaternarySystemFill))
-            .overlay(Divider(), alignment: .bottom) // just a separator line
-            .gridCellColumns(3)
-        }
-    }
-
-    
+    // MARK: - Footer bits
     private var restTimerView: some View {
         Group {
             if let seconds = timerSeconds {
@@ -203,6 +276,7 @@ struct WorkoutView: View {
         }
     }
 
+    // MARK: - Data / Logic
     private func loadWorkouts() {
         workoutManager.loadWorkouts(context: context)
         localSets = workoutManager.workouts.map { workout in
@@ -228,11 +302,9 @@ struct WorkoutView: View {
         let resultItems = saveWorkoutResult()
         workoutManager.adjustWeightsAfterWorkout(context: context, results: resultItems, settings: settings)
     }
-    
+
     @discardableResult
     private func saveWorkoutResult() -> [WorkoutResultItem] {
-        print("Saving WorkoutResult with \(workoutManager.workouts.count) workouts.")
-
         let resultItems: [WorkoutResultItem] = zip(workoutManager.workouts, localSets).map { workout, sets in
             let failedReps = sets.filter { $0.state != "success" }.map { $0.reps }
             let success = failedReps.isEmpty
@@ -245,7 +317,13 @@ struct WorkoutView: View {
             )
         }
 
-        let overallSuccess = resultItems.allSatisfy { $0.success }
+        // Combine lift + run success (when run is enabled)
+        var overallSuccess = resultItems.allSatisfy { $0.success }
+        if let plan = activePlan, plan.includeRunSection {
+            let runSuccess = ranDistance >= plan.runGoalDistance
+            overallSuccess = overallSuccess && runSuccess
+        }
+
         let result = WorkoutResult(
             timestamp: Date(),
             totalTime: Double(workoutTime),
@@ -255,7 +333,6 @@ struct WorkoutView: View {
 
         context.insert(result)
         try? context.save()
-
         return resultItems
     }
 
@@ -287,7 +364,7 @@ struct WorkoutView: View {
         localSets[workoutIndex][setIndex] = set
     }
 
-    // Update the weight directly
+    // Update the weight directly (currently unused but kept for parity)
     private func updateWeight(_ weight: Double) {
         if let workout = workoutManager.workouts.first {
             workout.weight = weight
@@ -329,9 +406,15 @@ struct WorkoutView: View {
             }
         }
     }
-    
+
     private func rowColor(for index: Int) -> Color {
         index.isMultiple(of: 2) ? Color(.secondarySystemGroupedBackground) : Color(.tertiarySystemGroupedBackground)
     }
 
+    private func formatted(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? String(Int(value))
+            : String(value)
+    }
 }
+// ===== END FILE: WorkoutView.swift =====

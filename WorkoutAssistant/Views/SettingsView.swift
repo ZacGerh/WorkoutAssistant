@@ -1,3 +1,4 @@
+// ===== START FILE: SettingsView.swift =====
 import SwiftUI
 
 struct SettingsView: View {
@@ -43,8 +44,27 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                
+                Section(header: Text("Units")) {
+                    Picker("Weight Unit", selection: $settings.weightUnit) {
+                        ForEach(WeightUnit.allCases) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    // NEW
+                    Picker("Run Unit", selection: $settings.runUnit) {
+                        ForEach(RunUnit.allCases) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
             }
         }
         .navigationTitle("Settings")
     }
 }
+// ===== END FILE: SettingsView.swift =====

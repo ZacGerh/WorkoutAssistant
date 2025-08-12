@@ -13,7 +13,8 @@ struct WorkoutAssistantApp: App {
                 for: Workout.self,
                      WorkoutSet.self,
                      WorkoutResult.self,
-                     WorkoutResultItem.self
+                     WorkoutResultItem.self,
+                WorkoutPlan.self
             )
             return container
         } catch {
@@ -39,7 +40,8 @@ struct WorkoutAssistantApp: App {
                     for: Workout.self,
                          WorkoutSet.self,
                          WorkoutResult.self,
-                         WorkoutResultItem.self
+                         WorkoutResultItem.self,
+                         WorkoutPlan.self
                 )
             } catch {
                 fatalError("Could not create fresh ModelContainer: \(error)")

@@ -1,3 +1,4 @@
+// ===== START FILE: WorkoutResult.swift =====
 import Foundation
 import SwiftData
 
@@ -6,21 +7,32 @@ class WorkoutResult: Identifiable {
     @Attribute(.unique) var id: UUID
     var timestamp: Date
     var totalTime: Double
-    @Relationship(deleteRule: .cascade) var workouts: [WorkoutResultItem]
+    var workouts: [WorkoutResultItem]
     var overallSuccess: Bool
+
+    // NEW: run info (stored in miles)
+    var runEnabled: Bool
+    var runGoalMiles: Double
+    var runTotalMiles: Double
 
     init(
         id: UUID = UUID(),
         timestamp: Date,
         totalTime: Double,
         workouts: [WorkoutResultItem],
-        overallSuccess: Bool
+        overallSuccess: Bool,
+        runEnabled: Bool = false,
+        runGoalMiles: Double = 0,
+        runTotalMiles: Double = 0
     ) {
         self.id = id
         self.timestamp = timestamp
         self.totalTime = totalTime
         self.workouts = workouts
         self.overallSuccess = overallSuccess
+        self.runEnabled = runEnabled
+        self.runGoalMiles = runGoalMiles
+        self.runTotalMiles = runTotalMiles
     }
 }
 
@@ -46,3 +58,4 @@ class WorkoutResultItem {
         self.failedReps = failedReps
     }
 }
+// ===== END FILE: WorkoutResult.swift =====

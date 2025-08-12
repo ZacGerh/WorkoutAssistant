@@ -3,7 +3,13 @@ import SwiftUI
 enum WeightUnit: String, CaseIterable, Identifiable {
     case lbs = "Lbs"
     case kg = "Kg"
+    var id: String { rawValue }
+}
 
+// NEW
+enum RunUnit: String, CaseIterable, Identifiable {
+    case miles = "Miles"
+    case km = "Km"
     var id: String { rawValue }
 }
 
@@ -17,14 +23,19 @@ class SettingsManager: ObservableObject {
     @AppStorage("defaultIncrement") var defaultIncrement: Double = 5
     @AppStorage("weightTolerance") var weightTolerance: Double = 5
 
-    // NEW DEFAULTS
     @AppStorage("defaultSets") var defaultSets: Int = 3
     @AppStorage("defaultReps") var defaultReps: Int = 10
 
     @AppStorage("weightUnit") var weightUnitRaw: String = WeightUnit.lbs.rawValue
-
     var weightUnit: WeightUnit {
         get { WeightUnit(rawValue: weightUnitRaw) ?? .lbs }
         set { weightUnitRaw = newValue.rawValue }
+    }
+
+    // NEW – Run unit lives in Settings (label only; no conversion math)
+    @AppStorage("runUnit") private var runUnitRaw: String = RunUnit.miles.rawValue
+    var runUnit: RunUnit {
+        get { RunUnit(rawValue: runUnitRaw) ?? .miles }
+        set { runUnitRaw = newValue.rawValue }
     }
 }
