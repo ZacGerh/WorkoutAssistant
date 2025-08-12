@@ -13,28 +13,34 @@ struct WorkoutView: View {
     @EnvironmentObject var settings: SettingsManager
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-
+    
     @State private var timerSeconds: Int? = nil
     @State private var currentTimer: Timer? = nil
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
     @State private var localSets: [[LocalSetState]] = []
-
+    
     @State private var workoutTime: Int = 0
     @State private var workoutTimer: Timer? = nil
     @State private var workoutStartTime: Date = Date()
-
+    
     // Constants for layout and timer behavior.
     private let successRestTime = 90
     private let failureRestTime = 180
     private let notStartedRestTime = 0
-
+    
+    private let nameWidth: CGFloat = 100
+    private let weightWidth: CGFloat = 75
+    private let horizontalSpacing: CGFloat = 10
+    private let rowSpacing: CGFloat = 12
+    
     var body: some View {
         GeometryReader { geometry in
-            let totalHorizontalPadding: CGFloat = 32
-            let availableWidth = max(0, geometry.size.width - 150 - totalHorizontalPadding)
+            let fixedColumnsWidth: CGFloat = nameWidth + weightWidth // name + weight
+            let availableWidth = max(0, geometry.size.width - fixedColumnsWidth - horizontalSpacing * 2 - rowSpacing * 2)
             let columnsCount = max(Int(availableWidth / 60), 1)
 
+            
             VStack {
                 headerSection
                 ScrollView {
@@ -54,7 +60,7 @@ struct WorkoutView: View {
             workoutTimer?.invalidate()
         }
     }
-
+    
     private var headerSection: some View {
         VStack(spacing: 5) {
             Text("Today's Workout!")
@@ -66,45 +72,98 @@ struct WorkoutView: View {
         }
         .padding(.top)
     }
-
+    
     private func buildWorkoutGrid(availableWidth: CGFloat, columnsCount: Int) -> some View {
-        Grid(horizontalSpacing: 5, verticalSpacing: 15) {
-            GridRow {
-                Text("Workout").bold().frame(width: 75, alignment: .center)
-                Text("Weight").bold().frame(width: 75, alignment: .center)
-                Text("Sets and Reps").bold().frame(maxWidth: availableWidth, alignment: .leading)
+        let cornerRadius: CGFloat = 12
+
+        return ZStack {
+            // Outer rounded border
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(Color(UIColor.separator), lineWidth: 0.5)
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(Color(UIColor.systemGroupedBackground))
+                )
+
+            // Your grid, clipped to the same rounded shape so only outer corners round
+            Grid(horizontalSpacing: horizontalSpacing, verticalSpacing: 0) {
+                headerRow(availableWidth: availableWidth)
+                ForEach(Array(localSets.enumerated()), id: \.offset) { (workoutIndex, _) in
+                    buildWorkoutGridRow(workoutIndex: workoutIndex,
+                                        availableWidth: availableWidth,
+                                        columnsCount: columnsCount)
+                }
             }
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        }
+        .padding(.horizontal, horizontalSpacing)
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
 
-            ForEach(localSets.indices, id: \.self) { workoutIndex in
-                let workout = workoutManager.workouts[workoutIndex]
-                GridRow {
-                    Text(workout.name).frame(width: 75, alignment: .center)
-                    Text("\(Int(workout.weight)) \(settings.weightUnit.rawValue)")
-                        .frame(width: 75, alignment: .center)
+    
+    private func buildWorkoutGridRow(workoutIndex: Int,
+                                     availableWidth: CGFloat,
+                                     columnsCount: Int) -> some View {
+        let workout = workoutManager.workouts[workoutIndex]
+        return GridRow {
+            HStack(alignment: .top, spacing: rowSpacing) {
+                Text(workout.name).frame(width: nameWidth, alignment: .leading)
+                Text("\(workout.weight, format: .number.grouping(.never).precision(.fractionLength(0...6)))")
+                    .frame(width: weightWidth, alignment: .leading)
+                buildSetButtons(workoutIndex: workoutIndex, availableWidth: availableWidth, columnsCount: columnsCount)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(rowColor(for: workoutIndex))
+            .overlay(alignment: .bottom) {
+                if workoutIndex != localSets.count - 1 { Divider() } // no divider on the last row
+            }
+            .gridCellColumns(3)
+        }
+    }
 
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(50), spacing: 5), count: columnsCount), alignment: .leading, spacing: 15) {
-                        ForEach(localSets[workoutIndex].indices, id: \.self) { setIndex in
-                            let setBinding = Binding<LocalSetState>(
-                                get: { localSets[workoutIndex][setIndex] },
-                                set: { localSets[workoutIndex][setIndex] = $0 }
-                            )
-                            SetButton(
-                                state: Binding(
-                                    get: { convertToSetState(setBinding.wrappedValue) },
-                                    set: { newState in setBinding.wrappedValue = convertFromSetState(newState) }
-                                )
-                            ) { _ in
-                                handleSetTap(workoutIndex: workoutIndex, setIndex: setIndex)
-                            }
-                        }
-                    }
-                    .frame(maxWidth: availableWidth, alignment: .leading)
+    
+    private func buildSetButtons(workoutIndex: Int, availableWidth: CGFloat, columnsCount: Int) -> some View {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.fixed(50), spacing: 5), count: columnsCount),
+            alignment: .leading,
+            spacing: 15
+        ) {
+            ForEach(localSets[workoutIndex].indices, id: \.self) { setIndex in
+                let setBinding = Binding<LocalSetState>(
+                    get: { localSets[workoutIndex][setIndex] },
+                    set: { localSets[workoutIndex][setIndex] = $0 }
+                )
+                SetButton(
+                    state: Binding(
+                        get: { convertToSetState(setBinding.wrappedValue) },
+                        set: { newState in setBinding.wrappedValue = convertFromSetState(newState) }
+                    )
+                ) { _ in
+                    handleSetTap(workoutIndex: workoutIndex, setIndex: setIndex)
                 }
             }
         }
-        .padding(.horizontal)
+        .frame(maxWidth: availableWidth, alignment: .leading)
     }
 
+    @ViewBuilder
+    private func headerRow(availableWidth: CGFloat) -> some View {
+        GridRow {
+            HStack(alignment: .top, spacing: rowSpacing) {
+                Text("Workout").bold().frame(width: nameWidth, alignment: .leading)
+                Text("\(settings.weightUnit.rawValue)").bold().frame(width: weightWidth, alignment: .leading)
+                Text("Sets and Reps").bold().frame(maxWidth: availableWidth, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color(UIColor.quaternarySystemFill))
+            .overlay(Divider(), alignment: .bottom) // just a separator line
+            .gridCellColumns(3)
+        }
+    }
+
+    
     private var restTimerView: some View {
         Group {
             if let seconds = timerSeconds {
@@ -270,4 +329,9 @@ struct WorkoutView: View {
             }
         }
     }
+    
+    private func rowColor(for index: Int) -> Color {
+        index.isMultiple(of: 2) ? Color(.secondarySystemGroupedBackground) : Color(.tertiarySystemGroupedBackground)
+    }
+
 }
